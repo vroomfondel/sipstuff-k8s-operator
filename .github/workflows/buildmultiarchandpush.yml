@@ -1,0 +1,86 @@
+name: BuildAndPushMultiarch
+
+#on:
+#  push:
+#    branches:
+#      - "main"
+#
+#  pull_request:
+
+on:
+  workflow_run:
+    workflows: ["mypy and pytests"]
+    branches: ["main"]
+    types:
+      - completed
+
+# CHECK: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
+#on:
+#  - workflow_dispatch
+#  - push:
+#      branches:
+#        - 'main'
+#        - 'dev'
+#      tags:
+#        - 'v*.*.*'
+#  - pull_request:
+#    branches:
+#      - 'main'
+#      - 'dev'
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      # Get the repository's code
+      # NOTE: not really needed since build-push-action uses the "Git context"
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      # https://github.com/docker/setup-qemu-action
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # https://github.com/docker/setup-buildx-action
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: get some runtime info
+        run: |
+          echo PWD: $(pwd)
+          echo ENV: $(env)
+          echo GH-REF: ${{ github.ref }}
+          echo GH-SHA: ${{ github.sha }}
+          tree
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Get Berlin Time
+        id: berlin_time
+        run: |
+          BUILDTIME=$(TZ='Europe/Berlin' date +'%Y-%m-%d %H:%M:%S %Z')
+          echo "buildtime=${BUILDTIME}" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          # github.event_name ist hier dann immer "workflow_run"
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: "xomoxcc/sipstuff-k8s-operator:latest,xomoxcc/sipstuff-k8s-operator:python-3.14-slim-trixie"
+          build-args: |
+            buildtime=${{ steps.berlin_time.outputs.buildtime }}
+            python_version=3.14
+            debian_version=slim-trixie
+          # tags: ${{ steps.<meta_id>.outputs.tags }}
+          # labels: ${{ steps.<meta_id>.outputs.labels }}

@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+packages = ["sipstuff_k8s_operator"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[project]
+name = "sipstuff-k8s-operator"
+dynamic = ["version"]
+authors = [
+  { name="Henning Thieß", email="ht@xomox.cc" },
+]
+description = "Kubernetes operator that creates SIP call Jobs via a FastAPI HTTP API"
+readme = "README.md"
+requires-python = ">=3.14"
+license-files = ["LICENSE.md"]
+
+keywords = ["sip", "kubernetes", "operator", "fastapi", "voip", "pjsip"]
+
+# https://pypi.org/classifiers/
+classifiers = [
+    "Development Status :: 4 - Beta",
+
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+
+    "Topic :: Communications :: Telephony",
+    "Topic :: System :: Systems Administration",
+
+    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    'PyYAML>=6.0',
+    'loguru>=0.7.0',
+    'fastapi>=0.115.0',
+    'uvicorn[standard]>=0.34.0',
+    'pydantic>=2.10.0',
+    'kubernetes>=32.0.0',
+    'tabulate>=0.9.0',
+]
+
+[project.scripts]
+sipstuff-operator = "sipstuff_k8s_operator.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/vroomfondel/sipstuff-k8s-operator"
+Repository = "https://github.com/vroomfondel/sipstuff-k8s-operator"
+Issues = "https://github.com/vroomfondel/sipstuff-k8s-operator/issues"
+
+[tool.hatch.version]
+path = "sipstuff_k8s_operator/__init__.py"
+
+[tool.isort]
+profile = "black"
+line_length = 120

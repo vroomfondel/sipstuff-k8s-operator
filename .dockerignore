@@ -1,0 +1,3 @@
+docker-config/
+**/__pycache__
+**/*.local.*
