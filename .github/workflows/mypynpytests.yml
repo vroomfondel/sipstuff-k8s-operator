@@ -48,8 +48,7 @@ jobs:
 
       - name: static type checking with mypy
         run: make tcheck
-        # better via makefile -> avoid doubling command/package listing...
-        # run: mypy *.py ecowittstuff/*py llmstuff/*.py mqttstuff/*.py dnsstuff/*.py netatmostuff/*.py
+
 
       - name: run pytest
         # run: make tests

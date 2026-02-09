@@ -1,1 +1,1 @@
-"""Tests for flickrtoimmich."""
+"""Tests for sipstuff_k8s_operator."""

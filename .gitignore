@@ -8,10 +8,6 @@
 *.local.*
 /repo_scripts/logdir/
 
-# Flickr data directories (created at runtime)
-/flickr-backup/
-/flickr-config/
-/flickr-cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
