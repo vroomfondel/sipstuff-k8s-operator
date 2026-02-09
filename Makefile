@@ -1,4 +1,4 @@
-.PHONY: tests help install venv lint isort tcheck build commit-checks prepare gitleaks update-all-dockerhub-readmes
+.PHONY: tests help install venv lint isort tcheck build commit-checks prepare gitleaks pypibuild pypipush update-all-dockerhub-readmes
 SHELL := /usr/bin/bash
 .ONESHELL:
 
@@ -11,6 +11,8 @@ help:
 	@printf "\ntests\n\tLaunch tests\n"
 	@printf "\nprepare\n\tLaunch tests and commit-checks\n"
 	@printf "\ncommit-checks\n\trun pre-commit checks on all files\n"
+	@printf "\npypibuild\n\tbuild package for pypi\n"
+	@printf "\npypipush\n\tpush package to pypi\n"
 	@printf "\nbuild\n\tbuild docker image\n"
 	@printf "\nupdate-all-dockerhub-readmes \n\tupdate Docker Hub repo description from DOCKERHUB_OVERVIEW.md\n"
 
@@ -62,6 +64,27 @@ commit-checks: .git/hooks/pre-commit
 	pre-commit run --all-files
 
 prepare: tests commit-checks
+
+PKG_SOURCES := sipstuff_k8s_operator/*
+VENV_DEPS := requirements.txt requirements-dev.txt requirements-build.txt
+
+VERSION := $(shell $(venv_activated) > /dev/null 2>&1 && hatch version 2>/dev/null || echo HATCH_NOT_FOUND)
+
+dist/sipstuff_k8s_operator-$(VERSION).tar.gz dist/sipstuff_k8s_operator-$(VERSION)-py3-none-any.whl dist/.touchfile: $(PKG_SOURCES) $(VENV_DEPS) pyproject.toml
+	@printf "VERSION: $(VERSION)\n"
+	@$(venv_activated)
+	hatch build --clean
+	@touch dist/.touchfile
+
+
+pypibuild: venv dist/sipstuff_k8s_operator-$(VERSION).tar.gz dist/sipstuff_k8s_operator-$(VERSION)-py3-none-any.whl
+
+dist/.touchfile_push: dist/sipstuff_k8s_operator-$(VERSION).tar.gz dist/sipstuff_k8s_operator-$(VERSION)-py3-none-any.whl
+	@$(venv_activated)
+	hatch publish -r main
+	@touch dist/.touchfile_push
+
+pypipush: venv dist/.touchfile_push
 
 DOCKER_IMAGE := sipstuff-k8s-operator
 
