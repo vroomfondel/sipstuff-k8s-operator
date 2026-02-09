@@ -1,3 +1,12 @@
+[![mypy and pytests](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/mypynpytests.yml/badge.svg)](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/mypynpytests.yml)
+[![BuildAndPushMultiarch](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/buildmultiarchandpush.yml/badge.svg)](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/buildmultiarchandpush.yml)
+[![black-lint](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/checkblack.yml/badge.svg)](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/checkblack.yml)
+![Cumulative Clones](https://img.shields.io/endpoint?logo=github&url=https://gist.githubusercontent.com/vroomfondel/69048d146ee747668673b2a8f8ebc81e/raw/sipstuff-k8s-operator_clone_count.json)
+[![Docker Pulls](https://img.shields.io/docker/pulls/xomoxcc/sipstuff-k8s-operator?logo=docker)](https://hub.docker.com/r/xomoxcc/sipstuff-k8s-operator/tags)
+[![PyPI](https://img.shields.io/pypi/v/sipstuff-k8s-operator?logo=pypi&logoColor=white)](https://pypi.org/project/sipstuff-k8s-operator/)
+
+# WIP !!!!!
+
 # sipstuff-k8s-operator
 
 A Kubernetes operator that exposes a FastAPI HTTP API for creating SIP call Jobs. It accepts call requests via `POST /call`, builds Kubernetes Jobs that run `sipstuff.cli call`, and tracks job status.

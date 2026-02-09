@@ -1,154 +1,214 @@
-# Flickr Download (Docker)
+[![mypy and pytests](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/mypynpytests.yml/badge.svg)](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/mypynpytests.yml)
+[![BuildAndPushMultiarch](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/buildmultiarchandpush.yml/badge.svg)](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/buildmultiarchandpush.yml)
+[![black-lint](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/checkblack.yml/badge.svg)](https://github.com/vroomfondel/sipstuff-k8s-operator/actions/workflows/checkblack.yml)
+![Cumulative Clones](https://img.shields.io/endpoint?logo=github&url=https://gist.githubusercontent.com/vroomfondel/69048d146ee747668673b2a8f8ebc81e/raw/sipstuff-k8s-operator_clone_count.json)
+[![Docker Pulls](https://img.shields.io/docker/pulls/xomoxcc/sipstuff-k8s-operator?logo=docker)](https://hub.docker.com/r/xomoxcc/sipstuff-k8s-operator/tags)
+[![PyPI](https://img.shields.io/pypi/v/sipstuff-k8s-operator?logo=pypi&logoColor=white)](https://pypi.org/project/sipstuff-k8s-operator/)
 
-[![Gemini_Generated_Image_d8lx4wd8lx4wd8lx_250x250.png](https://raw.githubusercontent.com/vroomfondel/flickrtoimmich/main/Gemini_Generated_Image_d8lx4wd8lx4wd8lx_250x250.png)](https://github.com/vroomfondel/flickrtoimmich)
+# WIP !!!
 
-A Docker image for backing up Flickr photo libraries using [`flickr_download`](https://github.com/beaufour/flickr-download) with browser-based OAuth authentication. Based on `python:3.14-slim`, available for **linux/amd64** and **linux/arm64**. [Source on GitHub](https://github.com/vroomfondel/flickrtoimmich).
+# sipstuff-k8s-operator
+
+A Kubernetes operator that exposes a FastAPI HTTP API for creating SIP call Jobs. It accepts call requests via `POST /call`, builds Kubernetes Jobs that run [`sipstuff.cli call`](https://hub.docker.com/r/xomoxcc/somestuff/tags), and tracks job status. Available for **linux/amd64** and **linux/arm64**. [Source on GitHub](https://github.com/vroomfondel/sipstuff-k8s-operator).
+
+Quick links:
+- Source: [github.com/vroomfondel/sipstuff-k8s-operator](https://github.com/vroomfondel/sipstuff-k8s-operator)
+- PyPI: [pypi.org/project/sipstuff-k8s-operator](https://pypi.org/project/sipstuff-k8s-operator/)
+- CI: mypy + pytest, black lint, and a multi‑arch Docker build/push workflow (see badges above)
 
 
 ## Why this is useful
 
-- **Browser-based OAuth in a container** — X11 forwarding, Unix domain socket, or D-Bus portal modes let the Flickr OAuth browser flow work from inside a container without manual token wrangling.
-- **Rate-limit handling** — a wrapper process detects HTTP 429 responses, freezes `flickr_download` with `SIGSTOP`, backs off exponentially, then resumes with `SIGCONT`. No photos are silently skipped.
-- **ExifTool metadata** — downloaded photos retain their original EXIF data; JSON metadata is saved alongside each file.
-- **Resumable downloads** — API response caching means interrupted downloads pick up where they left off.
-- **Patched `flickr_download`** — installed from GitHub (not PyPI) for unreleased fixes; photos with unknown dates (`0000-00-00`) are gracefully skipped instead of crashing.
+- **HTTP API for SIP calls** — trigger phone calls from any system that can make HTTP requests (monitoring, alerting, CI/CD pipelines, home automation).
+- **Kubernetes‑native** — each call runs as an isolated K8s Job with proper RBAC, TTL cleanup, and status tracking.
+- **Per‑request SIP overrides** — override SIP server, credentials, transport, SRTP, and NAT traversal settings per call, or fall back to a shared K8s Secret.
+- **NAT traversal** — STUN, ICE, TURN relay, UDP keepalive, and static public address support for complex network environments.
+- **Multi‑arch** — runs on amd64 and arm64 (laptops, servers, SBCs).
 
-## What's inside
 
-### Key files
+## API Endpoints
 
-| File | Container path | Purpose |
+| Method | Path | Description |
 |---|---|---|
-| `flickr-docker.sh` | `/usr/local/bin/flickr-docker.sh` | Main wrapper script (download, auth, album management) |
-| `flickr-download-wrapper.py` | `/usr/local/bin/flickr-download-wrapper.py` | Rate-limit backoff wrapper around `flickr_download` |
-| `flickr-list-albums.py` | `/usr/local/bin/flickr-list-albums.py` | Album listing with photo/video counts |
-| `upload-to-immich.sh` | `/usr/local/bin/upload-to-immich.sh` | Uploads downloaded photos/videos to Immich, one album per directory |
-| `immich-uploader-wrapped.py` | `/usr/local/bin/immich-uploader-wrapped.py` | Batched Immich uploader with streaming output |
-| `url-opener` | `/usr/local/bin/url-opener` | Forwards browser-open requests to the host via a Unix socket (`USE_DSOCKET` mode) |
-| `url-dbus-opener` | `/usr/local/bin/url-dbus-opener` | Opens a URL on the host via XDG Desktop Portal D-Bus (`USE_DBUS` mode) |
-| `entrypoint.sh` | `/entrypoint.sh` | Container entrypoint; routes `shell` to bash, `download_then_upload` to download-then-Immich-upload, everything else to `flickr-docker.sh` |
+| `POST` | `/call` | Create a K8s Job that executes a SIP call |
+| `GET` | `/jobs` | List all SIP call jobs |
+| `GET` | `/jobs/{name}` | Get status of a specific job |
+| `GET` | `/health` | Liveness / readiness probe |
 
-### Installed packages
-
-Chromium, Firefox ESR, ExifTool (`libimage-exiftool-perl`), X11 libraries, D-Bus / `gdbus`, `flickr_download` (from GitHub HEAD).
 
 ## Quick start
 
 ```bash
 # Pull the image
-docker pull xomoxcc/flickr-download:latest
+docker pull xomoxcc/sipstuff-k8s-operator:latest
 
-# Authenticate (opens browser for OAuth, prompts for API key on first run)
-docker run --rm -it \
-  -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v "$(pwd)/flickr-config:/root" \
-  xomoxcc/flickr-download:latest auth
+# Run locally (connects to your current kubeconfig context)
+docker run --rm -p 8080:8080 \
+  -v ~/.kube/config:/root/.kube/config:ro \
+  xomoxcc/sipstuff-k8s-operator:latest
 
-# Download all albums for a Flickr user
-docker run --rm -it \
-  -v "$(pwd)/flickr-config:/root" \
-  -v "$(pwd)/flickr-backup:/root/flickr-backup" \
-  -v "$(pwd)/flickr-cache:/root/flickr-cache" \
-  xomoxcc/flickr-download:latest download <user>
+# Create a call
+curl -X POST http://localhost:8080/call \
+  -H "Content-Type: application/json" \
+  -d '{"dest": "+4912345678", "text": "Hello from sipstuff"}'
+
+# List jobs
+curl http://localhost:8080/jobs
+
+# Check health
+curl http://localhost:8080/health
 ```
 
-## Commands
 
-| Command | Description |
-|---|---|
-| `build` | Build Docker image locally |
-| `auth` | Authenticate with Flickr (opens browser for OAuth) |
-| `download <user>` | Download all albums for a Flickr user |
-| `album <id>` | Download a single album by ID |
-| `list <user>` | List albums with photo/video counts |
-| `shell` | Open interactive shell in the container |
-| `test-browser [url]` | Test X11/browser connectivity (Linux only) |
-| `info` | Show paths, tool versions, and diagnostics |
-| `clean` | Remove Docker image and temp files |
-| `download_then_upload <user>` | Download all albums, then upload to Immich (requires `DATA_DIR`, `IMMICH_API_KEY`, `IMMICH_INSTANCE_URL`) |
+## Configuration
 
-## Browser modes
-
-The OAuth flow needs a browser. Three modes are supported on Linux; Mac/Windows print the URL for manual opening.
-
-| Mode | Env var | How it works |
-|---|---|---|
-| X11 (default on Linux) | — | Forwards X11 display into the container; browser opens inside the container and renders on the host |
-| Domain socket | `USE_DSOCKET=true` | Host-side Python listener on a Unix socket; container sends the URL, host opens it with `xdg-open`. No X11 needed |
-| D-Bus portal | `USE_DBUS=true` | Mounts the host D-Bus session socket; container calls XDG Desktop Portal `OpenURI` via `gdbus`. Podman recommended (Docker may fail D-Bus auth due to UID mismatch) |
-
-The modes are mutually exclusive.
+All settings are read from environment variables. Every variable is optional with sensible defaults.
 
 | Variable | Default | Description |
 |---|---|---|
-| `USE_DSOCKET` | `false` | Enable domain socket mode |
-| `DSOCKET_PATH` | `/tmp/.flickr-open-url.sock` | Host-side socket path |
-| `USE_DBUS` | `false` | Enable D-Bus portal mode |
+| `JOB_NAMESPACE` | Downward API namespace or `"sipstuff"` | K8s namespace for created jobs |
+| `JOB_IMAGE` | `"xomoxcc/somestuff:latest"` | Container image for SIP call jobs |
+| `SIP_SECRET_NAME` | `"sip-credentials"` | K8s Secret name for default SIP credentials |
+| `JOB_TTL_SECONDS` | `3600` | TTL in seconds after job completion before cleanup |
+| `JOB_BACKOFF_LIMIT` | `0` | Number of retries before marking a job as failed |
+| `JOB_HOST_NETWORK` | `"true"` | Use host networking for SIP/RTP |
+| `PORT` | `8080` | HTTP listen port |
 
-## Rate-limit backoff
 
-`flickr_download` has no built-in retry for `429 Too Many Requests`. The wrapper detects these responses, freezes the process with `SIGSTOP`, sleeps with increasing backoff, then sends `SIGCONT` to resume.
+## Call Request Body
 
-| Variable | Default | Description |
-|---|---|---|
-| `BACKOFF_BASE` | `60` | Base wait in seconds; multiplied by consecutive 429 count |
-| `BACKOFF_MAX` | `600` | Cap on the wait time |
-| `BACKOFF_EXIT_ON_429` | `false` | Exit immediately (code 42) instead of sleeping; useful for CI / Kubernetes Jobs |
+`POST /call` accepts a JSON body with the following fields. Exactly one of `text` or `wav` must be provided.
 
-## Immich upload
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `dest` | `string` | *(required)* | Destination phone number or SIP URI |
+| `text` | `string` | `null` | Text to speak via TTS (mutually exclusive with `wav`) |
+| `wav` | `string` | `null` | Path to a WAV file to play (mutually exclusive with `text`) |
+| `sip_server` | `string` | `null` | SIP server override |
+| `sip_port` | `integer` | `null` | SIP port override (1-65535) |
+| `sip_user` | `string` | `null` | SIP username override |
+| `sip_password` | `string` | `null` | SIP password override |
+| `sip_transport` | `string` | `null` | Transport protocol: `"udp"`, `"tcp"`, or `"tls"` |
+| `sip_srtp` | `string` | `null` | SRTP mode: `"disabled"`, `"optional"`, or `"mandatory"` |
+| `sip_tls_verify` | `boolean` | `null` | TLS server certificate verification |
+| `stun_servers` | `string` | `null` | Comma-separated STUN servers |
+| `ice_enabled` | `boolean` | `null` | Enable ICE for NAT traversal |
+| `turn_server` | `string` | `null` | TURN relay server (host:port) |
+| `turn_username` | `string` | `null` | TURN auth username |
+| `turn_password` | `string` | `null` | TURN auth password |
+| `turn_transport` | `string` | `null` | TURN transport: `"udp"`, `"tcp"`, or `"tls"` |
+| `keepalive_sec` | `integer` | `null` | UDP keepalive interval in seconds (0-600) |
+| `public_address` | `string` | `null` | Public IP address for SDP/Contact headers |
+| `timeout` | `integer` | `60` | Call timeout in seconds (1-600) |
+| `pre_delay` | `float` | `0.0` | Delay before call in seconds (0-30) |
+| `inter_delay` | `float` | `0.0` | Delay between WAV repeats in seconds (0-30) |
+| `post_delay` | `float` | `0.0` | Delay after call in seconds (0-30) |
+| `repeat` | `integer` | `1` | Number of call repetitions (1-100) |
+| `tts_model` | `string` | `null` | TTS model name |
+| `tts_sample_rate` | `integer` | `null` | TTS sample rate in Hz (0-48000) |
+| `tts_data_dir` | `string` | `null` | TTS data directory |
+| `verbose` | `boolean` | `false` | Enable verbose logging in the call job |
 
-`upload-to-immich.sh` uploads downloaded photos and videos to an [Immich](https://immich.app/) instance, creating one Immich album per Flickr album directory. It uses `@immich/cli` (installed at runtime via npm).
 
-When running inside a container (`/.dockerenv`, `/run/.containerenv`, or `KUBERNETES_SERVICE_HOST` detected), the script runs `@immich/cli` directly. On the host it spins up a `node:lts-alpine` Podman container with the photo directory mounted read-only.
+## Kubernetes Deployment
 
-| Variable | Default | Description |
-|---|---|---|
-| `IMMICH_INSTANCE_URL` | — | Immich server URL |
-| `IMMICH_API_KEY` | — | Immich API key |
-| `DATA_DIR` | `$(pwd)/flickr-backup` (in-container) / `/data` (podman) | Directory containing album subdirectories |
-
-```bash
-IMMICH_INSTANCE_URL=https://immich.example.com IMMICH_API_KEY=secret ./upload-to-immich.sh
-```
-
-Supported file types: `.jpg`, `.png`, `.mp4`.
-
-## Podman notes
-
-When Podman is detected the wrapper script automatically adds `--userns=keep-id` and `--security-opt label=disable`. Running the published image directly:
-
-```bash
-podman run --rm -it --userns=keep-id \
-  -e "HOME=/home/poduser" \
-  -v "$(pwd)/flickr-config:/home/poduser" \
-  -v "$(pwd)/flickr-backup:/home/poduser/flickr-backup" \
-  -v "$(pwd)/flickr-cache:/home/poduser/flickr-cache" \
-  docker.io/xomoxcc/flickr-download:latest list <user>
-```
-
-## Data directories
-
-| Directory | Contents |
-|---|---|
-| `flickr-backup/` | Downloaded photos and JSON metadata |
-| `flickr-config/` | API credentials (`.flickr_download`) and OAuth token (`.flickr_token`) |
-| `flickr-cache/` | API response cache for resumable downloads |
-
-## Build from source
+Manifests are provided in the `k8s/` directory of the [source repository](https://github.com/vroomfondel/sipstuff-k8s-operator/tree/main/k8s):
 
 ```bash
-./build_multiarch.sh              # build and push to Docker Hub (amd64 + arm64)
-./build_multiarch.sh onlylocal    # local build only (no push)
+# Create namespace
+kubectl apply -f k8s/namespace.yaml
+
+# Create RBAC (ServiceAccount, Role, RoleBinding)
+kubectl apply -f k8s/rbac.yaml
+
+# Create the SIP credentials secret (copy and edit the example first)
+cp k8s/secret.yaml.example k8s/secret.yaml
+# edit k8s/secret.yaml with your SIP credentials
+kubectl apply -f k8s/secret.yaml
+
+# Deploy the operator
+kubectl apply -f k8s/deployment.yaml
+
+# Expose via ClusterIP service (80 -> 8080)
+kubectl apply -f k8s/service.yaml
 ```
 
-## Credentials
+The operator Deployment uses liveness and readiness probes against `/health`, runs as a single replica on port 8080, and uses a dedicated `sipstuff-operator` ServiceAccount with RBAC permissions for batch/jobs and pods.
 
-The build script sources `scripts/include.sh`, which loads `scripts/include.local.sh` (not committed) for Docker Hub credentials. See the repository root for details.
+
+## SIP Credentials
+
+SIP connection parameters can be provided per‑request in the call body (`sip_server`, `sip_port`, `sip_user`, `sip_password`, `sip_transport`, `sip_srtp`, `sip_tls_verify`). When a field is not provided, the operator falls back to the K8s Secret specified by `SIP_SECRET_NAME` (default: `sip-credentials`).
+
+The secret should contain these keys:
+
+```yaml
+stringData:
+  SIP_SERVER: "sip.example.com"
+  SIP_PORT: "5060"
+  SIP_USER: "sipuser"
+  SIP_PASSWORD: "changeme"
+  SIP_TRANSPORT: "udp"
+  SIP_SRTP: "disabled"
+  # SIP_TLS_VERIFY_SERVER: "false"
+```
+
+See [`k8s/secret.yaml.example`](https://github.com/vroomfondel/sipstuff-k8s-operator/blob/main/k8s/secret.yaml.example) for a complete example.
+
+### NAT Traversal
+
+NAT traversal settings (STUN, ICE, TURN, keepalive, public address) can be provided per‑request or configured globally via the same K8s Secret. Add any of these optional keys to the `sip-credentials` Secret:
+
+```yaml
+stringData:
+  # SIP_STUN_SERVERS: "stun.l.google.com:19302"
+  # SIP_ICE_ENABLED: "false"
+  # SIP_TURN_SERVER: "turn.example.com:3478"
+  # SIP_TURN_USERNAME: ""
+  # SIP_TURN_PASSWORD: ""
+  # SIP_TURN_TRANSPORT: "udp"
+  # SIP_KEEPALIVE_SEC: "0"
+  # SIP_PUBLIC_ADDRESS: ""
+```
+
+When `turn_server` is provided in a request, `SIP_TURN_ENABLED=true` is automatically set on the job.
+
+
+## Docker: build and image details
+
+The image is based on `python:3.14-slim`, installs Python deps via `requirements.txt`, copies the `sipstuff_k8s_operator` package, and runs `python3 -m sipstuff_k8s_operator` as its default command.
+
+### Local build
+```bash
+# Build the image
+make build
+# or
+docker build -t xomoxcc/sipstuff-k8s-operator:latest .
+
+# Run locally
+docker run --rm -p 8080:8080 xomoxcc/sipstuff-k8s-operator:latest
+```
+
+### Multi‑arch build and push
+The CI workflow (`.github/workflows/buildmultiarchandpush.yml`) builds and pushes multi‑arch images (amd64 + arm64) to Docker Hub after a successful mypy/pytest run. Tags: `xomoxcc/sipstuff-k8s-operator:latest` and `xomoxcc/sipstuff-k8s-operator:python-3.14-slim-trixie`.
+
+### GitHub Actions
+- `mypynpytests.yml` — mypy + pytest
+- `buildmultiarchandpush.yml` — multi‑arch Docker build/push (triggers after successful tests)
+- `checkblack.yml` — black code style check
+- `update-clone-badge.yml` — clone count badge update
+
 
 ## License
 
-See the repository's license files in the project root (`LICENSE.md`, `LICENSEMIT.md`, etc.).
+This project is licensed under the LGPL‑3.0 — see [LICENSE.md](https://github.com/vroomfondel/sipstuff-k8s-operator/blob/main/LICENSE.md). Some files/parts may use other licenses: [MIT](https://github.com/vroomfondel/sipstuff-k8s-operator/blob/main/LICENSEMIT.md) | [GPL](https://github.com/vroomfondel/sipstuff-k8s-operator/blob/main/LICENSEGPL.md) | [LGPL](https://github.com/vroomfondel/sipstuff-k8s-operator/blob/main/LICENSELGPL.md). Always check per‑file headers/comments.
 
-## ⚠️ Note
+
+## Authors
+- Repo owner (primary author)
+- Additional attributions are noted inline in code comments
+
+
+## Note
 
 This is a development/experimental project. For production use, review security settings, customize configurations, and test thoroughly in your environment. Provided "as is" without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software. Use at your own risk.

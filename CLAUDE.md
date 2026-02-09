@@ -37,7 +37,7 @@ python -m sipstuff_k8s_operator conntest  # Test K8s API connectivity only
 
 ### Package: `sipstuff_k8s_operator/`
 
-- `__init__.py` — Version (1.0.0), loguru configuration with `classname` extra field
+- `__init__.py` — Version (0.0.1), loguru configuration with `classname` extra field
 - `__main__.py` — Entry point, startup banner, uvicorn server, `conntest` subcommand for K8s API check
 - `config.py` — `OperatorConfig` frozen dataclass, all config from env vars (namespace, job_image, sip_secret_name, etc.)
 - `models.py` — Pydantic v2 models: `CallRequest` (incl. SIP overrides, NAT traversal fields), `CallResponse`, `JobInfo`, `HealthResponse`
