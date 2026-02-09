@@ -8,6 +8,7 @@ name: BuildAndPushMultiarch
 #  pull_request:
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["mypy and pytests"]
     branches: ["main"]
