@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, Request
@@ -55,6 +56,7 @@ def create_call(body: CallRequest, request: Request) -> CallResponse:
     batch_api = _get_batch_api(request)
 
     job = build_job(body, config)
+    logger.debug("Job spec:\n{}", json.dumps(job.to_dict(), indent=2, default=str))
     logger.info("Creating job {} in namespace {}", job.metadata.name, config.namespace)
 
     batch_api.create_namespaced_job(namespace=config.namespace, body=job)

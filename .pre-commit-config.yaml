@@ -24,7 +24,7 @@ repos:
       - id: mypy
         pass_filenames: false
         args: ["."]
-        additional_dependencies: [types-pytz, types-PyYAML, types-requests, types-cachetools]
+        additional_dependencies: [types-pytz, types-PyYAML, types-requests, types-cachetools, types-tabulate]
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.0

@@ -47,6 +47,45 @@ def _print_config(cfg: OperatorConfig) -> None:
     )
 
 
+def _strip_none(obj: object) -> object:
+    """Recursively remove keys with None values from dicts."""
+    if isinstance(obj, dict):
+        return {k: _strip_none(v) for k, v in obj.items() if v is not None}
+    if isinstance(obj, list):
+        return [_strip_none(i) for i in obj]
+    return obj
+
+
+def dumpjob(args: list[str]) -> None:
+    """Build a sample Job spec and print it as YAML (default) or JSON (``--json``).
+
+    Usage: ``dumpjob [--json] [IMAGE]``
+    """
+    from dataclasses import replace
+
+    from sipstuff_k8s_operator.job_builder import build_job
+    from sipstuff_k8s_operator.models import CallRequest
+
+    use_json = "--json" in args
+    remaining = [a for a in args if a != "--json"]
+
+    cfg = OperatorConfig.from_env()
+    if remaining:
+        cfg = replace(cfg, job_image=remaining[0])
+    req = CallRequest(dest="+4912345", text="Hello world")  # type: ignore[call-arg]
+    job = build_job(req, cfg)
+    data = _strip_none(job.to_dict())
+
+    if use_json:
+        import json
+
+        print(json.dumps(data, indent=2, default=str))
+    else:
+        import yaml
+
+        print(yaml.dump(data, default_flow_style=False, sort_keys=False))
+
+
 def conntest() -> None:
     """Test Kubernetes API connectivity and exit."""
     from kubernetes import client as k8s_client
@@ -88,5 +127,7 @@ def main() -> None:
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "conntest":
         conntest()
+    elif len(sys.argv) > 1 and sys.argv[1] == "dumpjob":
+        dumpjob(sys.argv[2:])
     else:
         main()
