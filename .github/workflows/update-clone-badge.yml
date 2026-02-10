@@ -29,4 +29,4 @@ jobs:
           GIST_ID: ${{ secrets.GIST_ID }}
           REPO_TOKEN: ${{ secrets.REPO_PRIV_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python scripts/update_badge.py
+        run: python repo_scripts/update_badge.py
