@@ -5,6 +5,13 @@ cd "$(dirname "$0")" || exit 2
 source ./include.sh
 # note: source include.local.sh if found (which it should -> otherwise makes no sense)
 
+SKIP_DOCKERHUB=false
+if [[ -z "${DHREPO:-}" || "$DHREPO" == "UNSET" ]]; then
+  SKIP_DOCKERHUB=true
+  echo "DHREPO is not set or 'UNSET' — skipping all DockerHub operations."
+fi
+
+if [[ "$SKIP_DOCKERHUB" == "false" ]]; then
 # Create public DockerHub repo via API
 DHREPO_NS="${DHREPO%%/*}"
 DHREPO_NAME="${DHREPO##*/}"
@@ -167,6 +174,7 @@ if [[ "$REPO_PERMS" != *pull* || "$REPO_PERMS" != *push* ]]; then
 fi
 
 echo "Docker Hub token validated: push+pull OK for $DHREPO"
+fi
 
 # Create public gist with badge files if GIST_ID is not yet set
 if [[ -z "$GIST_ID" || "$GIST_ID" != ghp_* ]]; then
@@ -210,8 +218,10 @@ if ! gh repo view "$GHREPO" &>/dev/null; then
 fi
 
 gh secret set GIST_ID --body "$GIST_ID" --repo "$GHREPO"
-gh secret set DOCKERHUB_TOKEN --body "$DOCKER_TOKEN" --repo "$GHREPO"
-gh secret set DOCKERHUB_USERNAME --body "$DOCKER_TOKENUSER" --repo "$GHREPO"
+if [[ "$SKIP_DOCKERHUB" == "false" ]]; then
+  gh secret set DOCKERHUB_TOKEN --body "$DOCKER_TOKEN" --repo "$GHREPO"
+  gh secret set DOCKERHUB_USERNAME --body "$DOCKER_TOKENUSER" --repo "$GHREPO"
+fi
 gh secret set GIST_TOKEN --body "$GIST_TOKEN" --repo "$GHREPO"
 gh secret set REPO_PRIV_TOKEN --body "$REPO_PRIV_TOKEN" --repo "$GHREPO"
 
