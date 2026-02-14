@@ -64,18 +64,25 @@ line_length = 120
 python_files = "tests/*.py"
 
 [tool.mypy]
-# https://mypy.readthedocs.io/en/stable/config_file.html
-warn_return_any = false
+strict = true
+warn_return_any = true
 warn_unused_configs = true
-ignore_missing_imports = true
-follow_imports = "silent"
-check_untyped_defs = true
-disallow_incomplete_defs = true
 disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
 no_implicit_optional = true
-exclude = [
-    "\\.venv",
-    "tests",
-    "venv",
-    "\\.pyi$",
-]
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+exclude = '''(?x)(
+    \.venv
+    | venv
+    | \.pyi$
+    )'''
+
+[[tool.mypy.overrides]]
+module = "kubernetes.*"
+ignore_missing_imports = true

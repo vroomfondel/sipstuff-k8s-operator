@@ -7,6 +7,7 @@ import json
 import sys
 import urllib.error
 import urllib.request
+from typing import Any
 
 
 def list_repositories(namespace: str) -> list[str]:
@@ -26,11 +27,12 @@ def list_repositories(namespace: str) -> list[str]:
     return repos
 
 
-def decode_jwt_payload(token: str) -> dict:
+def decode_jwt_payload(token: str) -> dict[str, Any]:
     """Decode the payload of a JWT token."""
     payload = token.split(".")[1]
     payload += "=" * (4 - len(payload) % 4)
-    return json.loads(base64.urlsafe_b64decode(payload))
+    result: dict[str, Any] = json.loads(base64.urlsafe_b64decode(payload))
+    return result
 
 
 def basic_auth_header(username: str, password: str) -> str:
@@ -63,7 +65,7 @@ def check_permissions(namespace: str, repo: str, username: str, token: str) -> l
     return granted
 
 
-def get_token_info(username: str, token: str) -> dict:
+def get_token_info(username: str, token: str) -> dict[str, Any]:
     """Get token metadata from a registry auth response."""
     url = "https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/alpine:pull"
     req = urllib.request.Request(url, headers={"Authorization": basic_auth_header(username, token)})
@@ -74,7 +76,10 @@ def get_token_info(username: str, token: str) -> dict:
     except urllib.error.HTTPError:
         return {}
 
-    return decode_jwt_payload(data["token"]).get("https://auth.docker.io", {})
+    info = decode_jwt_payload(data["token"]).get("https://auth.docker.io", {})
+    if not isinstance(info, dict):
+        return {}
+    return info
 
 
 def main() -> None:

@@ -1,7 +1,5 @@
 """Pydantic v2 models for API request/response."""
 
-from __future__ import annotations
-
 from datetime import datetime
 from typing import Literal
 
@@ -50,7 +48,7 @@ class CallRequest(BaseModel):
     verbose: bool = False
 
     @model_validator(mode="after")
-    def _check_text_or_wav(self) -> CallRequest:
+    def _check_text_or_wav(self) -> "CallRequest":
         if not self.text and not self.wav:
             raise ValueError("Exactly one of 'text' or 'wav' must be provided")
         if self.text and self.wav:

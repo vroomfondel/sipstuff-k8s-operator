@@ -18,13 +18,14 @@ repos:
         language_version: python3.14
         args: [--diff, --check, "-l 120"]
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.1
+  - repo: local
     hooks:
       - id: mypy
+        name: mypy
+        entry: mypy .
+        language: system
         pass_filenames: false
-        args: ["."]
-        additional_dependencies: [types-pytz, types-PyYAML, types-requests, types-cachetools, types-tabulate]
+        types: [python]
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.0

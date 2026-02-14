@@ -31,13 +31,14 @@ def generate_totp(secret: str, period: int = 30, digits: int = 6) -> str:
     return str(code % (10**digits)).zfill(digits)
 
 
-def post_json(url: str, payload: dict) -> dict:
+def post_json(url: str, payload: dict[str, str]) -> dict[str, str]:
     """POST JSON and return parsed response."""
     data = json.dumps(payload).encode()
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
     try:
         with urllib.request.urlopen(req) as resp:
-            return json.loads(resp.read())
+            result: dict[str, str] = json.loads(resp.read())
+            return result
     except urllib.error.HTTPError as e:
         body = e.read().decode(errors="replace")
         print(f"ERROR: HTTP {e.code} from {url}: {body}", file=sys.stderr)

@@ -26,7 +26,7 @@ def _get_config(request: Request) -> OperatorConfig:
 
 
 def _get_batch_api(request: Request) -> BatchV1Api:
-    return request.app.state.batch_api  # type: ignore[no-any-return]
+    return request.app.state.batch_api
 
 
 def _job_status(job: object) -> str:

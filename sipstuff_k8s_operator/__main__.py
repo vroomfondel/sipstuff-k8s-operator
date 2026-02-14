@@ -72,7 +72,7 @@ def dumpjob(args: list[str]) -> None:
     cfg = OperatorConfig.from_env()
     if remaining:
         cfg = replace(cfg, job_image=remaining[0])
-    req = CallRequest(dest="+4912345", text="Hello world")  # type: ignore[call-arg]
+    req = CallRequest(dest="+4912345", text="Hello world")
     job = build_job(req, cfg)
     data = _strip_none(job.to_dict())
 
