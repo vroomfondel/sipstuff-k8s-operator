@@ -14,6 +14,10 @@ readonly DOCKER_IMAGE_LATEST="${DOCKER_IMAGE%:*}:latest"
 readonly PLATFORMS=("linux/amd64" "linux/arm64")
 readonly DOCKERFILE=../Dockerfile
 readonly DOCKER_BUILD_CONTEXT=$(dirname "$(realpath --relative-to="${SCRIPT_DIR}" "${SCRIPT_DIR}/${DOCKERFILE}")")
+REMOTE_ARM64_CONNECTION="${REMOTE_ARM64_CONNECTION:-}"  # e.g. "user@rock5b"; made readonly after sourcing include.sh
+# Podman's Go SSH client cannot use the SSH agent or encrypted keys.
+# Use a dedicated unencrypted key (generate with: ssh-keygen -t ed25519 -f ~/.ssh/id_podman -N "")
+REMOTE_ARM64_SSH_IDENTITY="${REMOTE_ARM64_SSH_IDENTITY:-}"
 readonly BUILDER_NAME=mbuilder
 readonly ENABLE_PARALLEL_BUILDS=0
 readonly BUILDTIME="$(date +'%Y-%m-%d %H:%M:%S %Z')"
@@ -72,6 +76,9 @@ setup_environment() {
   export DOCKER_CONFIG
   export REGISTRY_AUTH_FILE="${DOCKER_CONFIG}/config.json"
 
+  # Lock REMOTE_ARM64_CONNECTION after include.sh (and include.local.sh) had a chance to set it
+  readonly REMOTE_ARM64_CONNECTION
+
   if is_podman; then
     DOCKER_IS_PODMAN=1
   fi
@@ -122,10 +129,47 @@ platform_needs_vm() {
   ! podman run --rm --platform "${platform}" alpine uname -m >/dev/null 2>&1
 }
 
-copy_image_from_vm() {
-  local image="$1"
-  log "Copying image from VM to host: ${image}"
-  podman image scp "podman-machine-default::${image}"
+ensure_remote_arm64_connection() {
+  local user_host="${REMOTE_ARM64_CONNECTION}"
+  # Podman's Go SSH client cannot use the SSH agent or encrypted keys.
+  # Use a dedicated unencrypted key (generate with: ssh-keygen -t ed25519 -f ~/.ssh/id_podman -N "")
+  local ssh_identity="${REMOTE_ARM64_SSH_IDENTITY}"
+
+  if [[ ! -f "${ssh_identity}" ]]; then
+    die "SSH identity '${ssh_identity}' not found. Create it with: ssh-keygen -t ed25519 -f ${ssh_identity} -N \"\" && ssh-copy-id -i ${ssh_identity} ${user_host}"
+  fi
+
+  # Check if connection already registered
+  if podman system connection list --format "{{.Name}}" | grep -qxF "${user_host}"; then
+    log "Podman connection '${user_host}' already registered"
+  else
+    log "Registering podman connection '${user_host}'..."
+    local remote_uid
+    remote_uid="$(ssh "${user_host}" id -u)" \
+      || die "SSH to '${user_host}' failed — check SSH key auth"
+    local sock_path
+    if [[ "${remote_uid}" == "0" ]]; then
+      sock_path="/run/podman/podman.sock"
+    else
+      sock_path="/run/user/${remote_uid}/podman/podman.sock"
+    fi
+
+    podman system connection add "${user_host}" "ssh://${user_host}${sock_path}" \
+      --identity "${ssh_identity}" \
+      || die "Failed to register podman connection '${user_host}'"
+  fi
+
+  # Validate connection is viable
+  log "Validating remote connection '${user_host}'..."
+  podman --connection "${user_host}" info >/dev/null 2>&1 \
+    || die "Podman connection '${user_host}' is not responding — ensure podman.socket is enabled on the remote host"
+}
+
+copy_image_from_remote() {
+  local connection="$1"
+  local image="$2"
+  log "Copying image from ${connection} to host: ${image}"
+  podman image scp "${connection}::${image}"
 }
 
 #=============================================================================
@@ -168,6 +212,11 @@ build_with_podman() {
   local -A platform_connect_args=()
   local -a build_pids=()
 
+  # Ensure remote arm64 connection is set up and viable
+  if [[ -n "${REMOTE_ARM64_CONNECTION}" ]]; then
+    ensure_remote_arm64_connection
+  fi
+
   # Add latest tag if not already latest
   local -a build_args=("${BUILD_BASE_ARGS[@]}")
 
@@ -177,8 +226,11 @@ build_with_podman() {
     local platform_tag="${DOCKER_IMAGE}-${arch}"
     local connect_arg=""
 
-    # Check if platform needs VM
-    if platform_needs_vm "${platform}"; then
+    # Check if platform needs remote builder or VM
+    if [[ "${arch}" == "arm64" && -n "${REMOTE_ARM64_CONNECTION}" ]]; then
+      log "Platform ${platform} delegated to remote: ${REMOTE_ARM64_CONNECTION}"
+      connect_arg="--connection ${REMOTE_ARM64_CONNECTION}"
+    elif platform_needs_vm "${platform}"; then
       log "Platform ${platform} needs VM for emulation"
       ensure_podman_vm_running
       connect_arg="--connection podman-machine-default"
@@ -219,12 +271,15 @@ build_with_podman() {
     (( failed == 1 )) && die "One or more builds failed"
   fi
 
-  # Copy images built in VM to host
+  # Copy images built on remote to host
   for platform in "${!platform_connect_args[@]}"; do
     if [[ -n "${platform_connect_args[$platform]}" ]]; then
       local arch="${platform#*/}"
       local platform_tag="${DOCKER_IMAGE}-${arch}"
-      copy_image_from_vm "${platform_tag}"
+      local conn="${platform_connect_args[$platform]}"
+      # Extract connection name from "--connection <name>"
+      conn="${conn##*--connection }"
+      copy_image_from_remote "${conn}" "${platform_tag}"
     fi
   done
 
@@ -242,12 +297,12 @@ build_with_podman() {
   # log "To push, run:"
   # echo "  podman manifest push ${DOCKER_IMAGE} docker://${DOCKER_IMAGE}"
   echo podman manifest push "${DOCKER_IMAGE}" "docker://${DOCKER_IMAGE}"
-  podman manifest push "${DOCKER_IMAGE}" "docker://${DOCKER_IMAGE}"
+  echo SKIP PUSH podman manifest push "${DOCKER_IMAGE}" "docker://${DOCKER_IMAGE}"
 
   # Push latest tag
   if [[ "${DOCKER_IMAGE}" != *:latest ]]; then
     log "Pushing as latest: ${DOCKER_IMAGE_LATEST}"
-    podman manifest push "${DOCKER_IMAGE}" "docker://${DOCKER_IMAGE_LATEST}"
+    echo SKIP PUSH podman manifest push "${DOCKER_IMAGE}" "docker://${DOCKER_IMAGE_LATEST}"
   fi
 }
 
@@ -292,6 +347,14 @@ main() {
   case "${1:-}" in
     login)
       ensure_docker_login
+      ;;
+    check)
+      if [[ -z "${REMOTE_ARM64_CONNECTION}" ]]; then
+        die "REMOTE_ARM64_CONNECTION is not set"
+      fi
+      ensure_remote_arm64_connection
+      log "Remote arm64 connection OK"
+      exit 0
       ;;
     onlylocal)
       ensure_docker_login
