@@ -44,6 +44,15 @@ class CallRequest(BaseModel):
     tts_sample_rate: int | None = Field(None, ge=0, le=48000)
     tts_data_dir: str | None = None
 
+    # STT params
+    stt_model: str | None = None
+    stt_language: str | None = None
+    stt_data_dir: str | None = None
+
+    # Recording — should point to a file below /data/recordings/ when the
+    # RECORDING_DIR volume mount is configured, e.g. "/data/recordings/call.wav"
+    record: str | None = None
+
     # Job options
     verbose: bool = False
 

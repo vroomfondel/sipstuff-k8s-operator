@@ -2,6 +2,21 @@
 
 Provides CLI subcommands (``conntest``, ``dumpjob``, ``startjob``) and the
 default ``main`` path that launches the FastAPI/uvicorn HTTP server.
+
+Examples:
+    $ python -m sipstuff_k8s_operator dumpjob \
+        --fs-group 1201 --run-as-user 1200 --run-as-group 1201 \
+        --piper-data-dir=/mnt/nfs/sipstuff_shared/piper_data \
+        --whisper-data-dir=/mnt/nfs/sipstuff_shared/whisper_data \
+        --recording-dir=/mnt/nfs/sipstuff_shared/recordings \
+        --sip-server 192.168.123.123 --sip-port 5060 \
+        --sip-transport udp --sip-srtp disabled \
+        --sip-user sipuser --sip-password sippassword \
+        --inter-delay 2.0 --pre-delay 3.0 --post-delay 1.0 \
+        --repeat 3 \
+        --text "Houston, wir haben ein Problem." \
+        --dest 192.168.123.123 \
+        --record /data/recordings/recording_$(date +%Y%m%d_%H%M%S).wav
 """
 
 import argparse

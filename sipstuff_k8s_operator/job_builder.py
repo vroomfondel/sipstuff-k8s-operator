@@ -52,6 +52,10 @@ def build_job(request: CallRequest, config: OperatorConfig) -> V1Job:
     ``/data/recordings`` respectively.  Container env vars point to the mount
     paths (not the host paths).
 
+    When ``record`` is set on *request*, ``--record <path>`` is passed to the
+    ``sipstuff.cli call`` command (the path should point inside the recording
+    volume, e.g. ``/data/recordings/call.wav``).
+
     If any of ``run_as_user``, ``run_as_group``, or ``fs_group`` are set on
     *config*, a ``PodSecurityContext`` is added to the pod spec.
     """
@@ -79,6 +83,13 @@ def build_job(request: CallRequest, config: OperatorConfig) -> V1Job:
         args.extend(["--tts-sample-rate", str(request.tts_sample_rate)])
     if request.tts_data_dir:
         args.extend(["--tts-data-dir", request.tts_data_dir])
+
+    if request.stt_model:
+        args.extend(["--stt-model", request.stt_model])
+    if request.stt_language:
+        args.extend(["--stt-language", request.stt_language])
+    if request.stt_data_dir:
+        args.extend(["--stt-data-dir", request.stt_data_dir])
 
     if request.verbose:
         args.append("--verbose")
@@ -153,9 +164,9 @@ def build_job(request: CallRequest, config: OperatorConfig) -> V1Job:
             volume_mounts.append(V1VolumeMount(name=vol_name, mount_path=mount_path))
             env_vars.append(V1EnvVar(name=env_name, value=mount_path))
 
-    # CLI arg for recording directory
-    if config.recording_dir is not None:
-        args.extend(["--recording-dir", _RECORDING_MOUNT_PATH])
+    # CLI arg for recording (per-call file path inside the recording volume)
+    if request.record is not None:
+        args.extend(["--record", request.record])
 
     job_name = _generate_job_name()
 

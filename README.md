@@ -132,6 +132,10 @@ The operator Deployment uses liveness and readiness probes against `/health`, ru
 | `tts_model` | `string` | `null` | TTS model name |
 | `tts_sample_rate` | `integer` | `null` | TTS sample rate in Hz (0-48000) |
 | `tts_data_dir` | `string` | `null` | TTS data directory |
+| `stt_model` | `string` | `null` | Whisper model size for STT transcription (e.g. `"tiny"`, `"base"`, `"small"`, `"medium"`, `"large-v3"`) |
+| `stt_language` | `string` | `null` | Language code for STT transcription (e.g. `"de"`) |
+| `stt_data_dir` | `string` | `null` | Directory for Whisper STT models |
+| `record` | `string` | `null` | Record remote party audio to this WAV file path (should be below `/data/recordings/` when `RECORDING_DIR` is configured) |
 | `verbose` | `boolean` | `false` | Enable verbose logging in the call job |
 
 ## SIP Credentials
