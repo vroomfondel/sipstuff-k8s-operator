@@ -68,6 +68,12 @@ All settings are read from environment variables. Every variable is optional wit
 | `JOB_BACKOFF_LIMIT` | `0` | Number of retries before marking a job as failed |
 | `JOB_HOST_NETWORK` | `"true"` | Use host networking for SIP/RTP |
 | `PORT` | `8080` | HTTP listen port |
+| `PIPER_DATA_DIR` | `null` | Host path for Piper TTS model cache; mounted at `/data/piper` |
+| `WHISPER_DATA_DIR` | `null` | Host path for Whisper STT model cache; mounted at `/data/whisper` |
+| `RECORDING_DIR` | `null` | Host path for call recordings; mounted at `/data/recordings` |
+| `RUN_AS_USER` | `null` | UID to run the job container as |
+| `RUN_AS_GROUP` | `null` | GID to run the job container as |
+| `FS_GROUP` | `null` | fsGroup for the job pod security context |
 
 ## Kubernetes Deployment
 

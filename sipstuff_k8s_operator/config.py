@@ -23,6 +23,12 @@ class OperatorConfig:
     job_backoff_limit: int
     host_network: bool
     port: int
+    piper_data_dir: str | None
+    whisper_data_dir: str | None
+    recording_dir: str | None
+    run_as_user: int | None
+    run_as_group: int | None
+    fs_group: int | None
 
     @classmethod
     def from_env(cls) -> OperatorConfig:
@@ -47,6 +53,18 @@ class OperatorConfig:
             Whether to use host networking for SIP/RTP (default ``"true"``).
         PORT : str, optional
             HTTP listen port (default ``8080``).
+        PIPER_DATA_DIR : str, optional
+            Host path for the Piper TTS model cache (default ``None``).
+        WHISPER_DATA_DIR : str, optional
+            Host path for the Whisper STT model cache (default ``None``).
+        RECORDING_DIR : str, optional
+            Host path for SIP call recording files (default ``None``).
+        RUN_AS_USER : str, optional
+            UID to run the job container as (default ``None``).
+        RUN_AS_GROUP : str, optional
+            GID to run the job container as (default ``None``).
+        FS_GROUP : str, optional
+            fsGroup for the job pod security context (default ``None``).
         """
         default_namespace = "sipstuff"
         ns_file = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
@@ -62,4 +80,10 @@ class OperatorConfig:
             job_backoff_limit=int(os.environ.get("JOB_BACKOFF_LIMIT", "0")),
             host_network=_parse_bool(os.environ.get("JOB_HOST_NETWORK", "true")),
             port=int(os.environ.get("PORT", "8080")),
+            piper_data_dir=os.environ.get("PIPER_DATA_DIR") or None,
+            whisper_data_dir=os.environ.get("WHISPER_DATA_DIR") or None,
+            recording_dir=os.environ.get("RECORDING_DIR") or None,
+            run_as_user=int(v) if (v := os.environ.get("RUN_AS_USER")) else None,
+            run_as_group=int(v) if (v := os.environ.get("RUN_AS_GROUP")) else None,
+            fs_group=int(v) if (v := os.environ.get("FS_GROUP")) else None,
         )

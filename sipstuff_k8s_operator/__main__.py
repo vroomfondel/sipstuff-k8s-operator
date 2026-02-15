@@ -1,6 +1,14 @@
+"""Entry point for the sipstuff-k8s-operator.
+
+Provides CLI subcommands (``conntest``, ``dumpjob``, ``startjob``) and the
+default ``main`` path that launches the FastAPI/uvicorn HTTP server.
+"""
+
+import argparse
 import logging
 import sys
 from dataclasses import fields
+from typing import TYPE_CHECKING, Callable
 
 import uvicorn
 from loguru import logger as glogger
@@ -9,6 +17,9 @@ from tabulate import tabulate
 from sipstuff_k8s_operator import __version__, configure_logging
 from sipstuff_k8s_operator.config import OperatorConfig
 
+if TYPE_CHECKING:
+    from kubernetes.client import V1Job
+
 configure_logging()
 glogger.enable("sipstuff_k8s_operator")
 
@@ -16,9 +27,18 @@ _uvicorn_logger = glogger.bind(classname="uvicorn")
 
 
 class _LoguruInterceptHandler(logging.Handler):
-    """Route stdlib logging records through loguru."""
+    """Intercept stdlib logging records and route them through loguru.
+
+    Installed as the sole handler on uvicorn's loggers so that all uvicorn
+    output is unified under the loguru sink.
+    """
 
     def emit(self, record: logging.LogRecord) -> None:
+        """Forward a stdlib ``LogRecord`` to the loguru logger.
+
+        Args:
+            record: The stdlib log record to forward.
+        """
         level: str | int
         try:
             level = glogger.level(record.levelname).name
@@ -56,6 +76,7 @@ UVICORN_LOG_CONFIG: dict[str, object] = {
 
 
 def _print_banner() -> None:
+    """Log the operator startup banner with version and project links."""
     startup_rows = [
         ["version", __version__],
         ["github", "https://github.com/vroomfondel/sipstuff-k8s-operator"],
@@ -75,6 +96,11 @@ def _print_banner() -> None:
 
 
 def _print_config(cfg: OperatorConfig) -> None:
+    """Log the active operator configuration as a formatted table.
+
+    Args:
+        cfg: The resolved operator configuration to display.
+    """
     config_table = [[f.name, getattr(cfg, f.name)] for f in fields(cfg)]
     cfg_table_str = tabulate(config_table, tablefmt="mixed_grid")
     cfg_lines = cfg_table_str.split("\n")
@@ -91,7 +117,15 @@ def _print_config(cfg: OperatorConfig) -> None:
 
 
 def _strip_none(obj: object) -> object:
-    """Recursively remove keys with None values from dicts."""
+    """Recursively remove keys with ``None`` values from nested dicts.
+
+    Args:
+        obj: A dict, list, or scalar value to clean.
+
+    Returns:
+        A copy of *obj* with all ``None``-valued dict entries removed at every
+        nesting level.
+    """
     if isinstance(obj, dict):
         return {k: _strip_none(v) for k, v in obj.items() if v is not None}
     if isinstance(obj, list):
@@ -100,7 +134,17 @@ def _strip_none(obj: object) -> object:
 
 
 def _is_bool_field(annotation: type | None) -> bool:
-    """Return True if the Pydantic field annotation resolves to bool."""
+    """Check whether a Pydantic field annotation resolves to ``bool``.
+
+    Handles plain ``bool`` as well as ``Union`` / ``X | Y`` types that
+    include ``bool`` among their arguments.
+
+    Args:
+        annotation: The type annotation from a Pydantic ``FieldInfo``.
+
+    Returns:
+        ``True`` if the annotation is or contains ``bool``.
+    """
     import types
     import typing
 
@@ -114,17 +158,28 @@ def _is_bool_field(annotation: type | None) -> bool:
     return False
 
 
-def dumpjob(args: list[str]) -> None:
-    """Build a Job spec from CallRequest parameters and print as YAML or JSON.
+def _build_job_from_args(
+    args: list[str], prog: str, extra_args_fn: "Callable[[argparse.ArgumentParser], None] | None" = None
+) -> "tuple[argparse.Namespace, V1Job, OperatorConfig]":
+    """Parse CLI args and build a Kubernetes ``V1Job`` with its config.
 
-    Accepts ``--data`` / ``-d`` for a JSON string and/or individual ``--flags``
-    for every CallRequest field.  Flags override JSON values.
-    All values are validated through the ``CallRequest`` Pydantic model.
+    Shared logic for the ``dumpjob`` and ``startjob`` subcommands.  CLI flags
+    are auto-generated from ``CallRequest`` model fields; an optional
+    ``--data`` JSON payload is merged with those flags (CLI wins).
 
-    Usage: ``dumpjob [--json-output] [--data JSON] [--field value ...] [IMAGE]``
+    Args:
+        args: Raw CLI argument strings to parse.
+        prog: Program name shown in ``--help`` output.
+        extra_args_fn: Optional callback that receives the
+            ``ArgumentParser`` to register subcommand-specific flags before
+            parsing.
+
+    Returns:
+        A tuple of ``(parsed_namespace, v1_job, operator_config)``.
+
+    Raises:
+        SystemExit: If argument parsing or Pydantic validation fails.
     """
-    import argparse
-    import json as json_mod
     from dataclasses import replace
 
     from pydantic import ValidationError
@@ -132,10 +187,18 @@ def dumpjob(args: list[str]) -> None:
     from sipstuff_k8s_operator.job_builder import build_job
     from sipstuff_k8s_operator.models import CallRequest
 
-    parser = argparse.ArgumentParser(prog="sipstuff-operator dumpjob", description="Dump a sample K8s Job spec")
+    parser = argparse.ArgumentParser(prog=prog, description="Build a K8s Job spec from CallRequest parameters")
     parser.add_argument("image", nargs="?", default=None, metavar="IMAGE", help="Override job container image")
-    parser.add_argument("--json-output", action="store_true", help="Output JSON instead of YAML")
     parser.add_argument("-d", "--data", default=None, help="JSON string matching the CallRequest schema")
+    parser.add_argument("--piper-data-dir", default=None, help="Override host path for Piper TTS model cache")
+    parser.add_argument("--whisper-data-dir", default=None, help="Override host path for Whisper STT model cache")
+    parser.add_argument("--recording-dir", default=None, help="Override host path for recording files")
+    parser.add_argument("--run-as-user", default=None, type=int, help="UID to run the job container as")
+    parser.add_argument("--run-as-group", default=None, type=int, help="GID to run the job container as")
+    parser.add_argument("--fs-group", default=None, type=int, help="fsGroup for the job pod security context")
+
+    if extra_args_fn is not None:
+        extra_args_fn(parser)
 
     # Auto-generate flags from CallRequest model fields — all as strings,
     # Pydantic handles type coercion and validation.
@@ -176,8 +239,40 @@ def dumpjob(args: list[str]) -> None:
     cfg = OperatorConfig.from_env()
     if parsed.image:
         cfg = replace(cfg, job_image=parsed.image)
+    if getattr(parsed, "piper_data_dir", None):
+        cfg = replace(cfg, piper_data_dir=parsed.piper_data_dir)
+    if getattr(parsed, "whisper_data_dir", None):
+        cfg = replace(cfg, whisper_data_dir=parsed.whisper_data_dir)
+    if getattr(parsed, "recording_dir", None):
+        cfg = replace(cfg, recording_dir=parsed.recording_dir)
+    if getattr(parsed, "run_as_user", None) is not None:
+        cfg = replace(cfg, run_as_user=parsed.run_as_user)
+    if getattr(parsed, "run_as_group", None) is not None:
+        cfg = replace(cfg, run_as_group=parsed.run_as_group)
+    if getattr(parsed, "fs_group", None) is not None:
+        cfg = replace(cfg, fs_group=parsed.fs_group)
 
     job = build_job(req, cfg)
+    return parsed, job, cfg
+
+
+def dumpjob(args: list[str]) -> None:
+    """Print a Kubernetes Job spec as YAML (default) or JSON without submitting it.
+
+    Args:
+        args: CLI arguments forwarded from the ``dumpjob`` subcommand.
+    """
+    import json as json_mod
+
+    def _add_output_flag(parser: argparse.ArgumentParser) -> None:
+        """Register the ``--json-output`` flag on *parser*.
+
+        Args:
+            parser: The argument parser to extend.
+        """
+        parser.add_argument("--json-output", action="store_true", help="Output JSON instead of YAML")
+
+    parsed, job, _cfg = _build_job_from_args(args, prog="sipstuff-operator dumpjob", extra_args_fn=_add_output_flag)
     data = _strip_none(job.to_dict())
 
     if parsed.json_output:
@@ -188,8 +283,39 @@ def dumpjob(args: list[str]) -> None:
         print(yaml.dump(data, default_flow_style=False, sort_keys=False))
 
 
+def startjob(args: list[str]) -> None:
+    """Build a Kubernetes Job spec from CLI / CallRequest parameters and submit it.
+
+    Loads the cluster configuration (in-cluster first, then local kubeconfig)
+    and creates the job via the Batch v1 API.
+
+    Args:
+        args: CLI arguments forwarded from the ``startjob`` subcommand.
+    """
+    from kubernetes import client as k8s_client
+    from kubernetes import config as k8s_config
+
+    _parsed, job, cfg = _build_job_from_args(args, prog="sipstuff-operator startjob")
+
+    try:
+        k8s_config.load_incluster_config()
+        glogger.info("Loaded in-cluster Kubernetes config")
+    except k8s_config.ConfigException:
+        k8s_config.load_kube_config()
+        glogger.info("Loaded local kubeconfig")
+
+    batch_api = k8s_client.BatchV1Api()
+    glogger.info("Creating job {} in namespace {}", job.metadata.name, cfg.namespace)
+    batch_api.create_namespaced_job(namespace=cfg.namespace, body=job)
+    glogger.info("Job {} created successfully", job.metadata.name)
+
+
 def conntest() -> None:
-    """Test Kubernetes API connectivity and exit."""
+    """Test Kubernetes API connectivity and exit.
+
+    Attempts to load cluster config, queries the version endpoint, logs
+    the result, and exits with code 0 on success or 1 on failure.
+    """
     from kubernetes import client as k8s_client
     from kubernetes import config as k8s_config
 
@@ -225,6 +351,11 @@ def conntest() -> None:
 
 
 def main() -> None:
+    """Start the sipstuff-k8s-operator HTTP server.
+
+    Prints the startup banner and configuration, creates the FastAPI
+    application, and launches uvicorn on the configured port.
+    """
     _print_banner()
 
     try:
@@ -245,5 +376,7 @@ if __name__ == "__main__":
         conntest()
     elif len(sys.argv) > 1 and sys.argv[1] == "dumpjob":
         dumpjob(sys.argv[2:])
+    elif len(sys.argv) > 1 and sys.argv[1] == "startjob":
+        startjob(sys.argv[2:])
     else:
         main()

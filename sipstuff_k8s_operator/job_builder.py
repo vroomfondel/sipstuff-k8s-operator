@@ -8,16 +8,24 @@ from kubernetes.client import (
     V1Container,
     V1EnvVar,
     V1EnvVarSource,
+    V1HostPathVolumeSource,
     V1Job,
     V1JobSpec,
     V1ObjectMeta,
+    V1PodSecurityContext,
     V1PodSpec,
     V1PodTemplateSpec,
     V1SecretKeySelector,
+    V1Volume,
+    V1VolumeMount,
 )
 
 from sipstuff_k8s_operator.config import OperatorConfig
 from sipstuff_k8s_operator.models import CallRequest
+
+_PIPER_MOUNT_PATH = "/data/piper"
+_WHISPER_MOUNT_PATH = "/data/whisper"
+_RECORDING_MOUNT_PATH = "/data/recordings"
 
 
 def _generate_job_name() -> str:
@@ -36,7 +44,17 @@ def _secret_env(name: str, secret_name: str, key: str) -> V1EnvVar:
 
 
 def build_job(request: CallRequest, config: OperatorConfig) -> V1Job:
-    """Construct a :class:`V1Job` for executing a SIP call."""
+    """Construct a :class:`V1Job` for executing a SIP call.
+
+    When ``piper_data_dir``, ``whisper_data_dir``, or ``recording_dir`` are set
+    on *config*, corresponding ``hostPath`` volumes (``DirectoryOrCreate``) are
+    created and mounted at ``/data/piper``, ``/data/whisper``, and
+    ``/data/recordings`` respectively.  Container env vars point to the mount
+    paths (not the host paths).
+
+    If any of ``run_as_user``, ``run_as_group``, or ``fs_group`` are set on
+    *config*, a ``PodSecurityContext`` is added to the pod spec.
+    """
     args: list[str] = ["python3", "-m", "sipstuff.cli", "call", "--dest", request.dest]
 
     if request.text:
@@ -117,19 +135,54 @@ def build_job(request: CallRequest, config: OperatorConfig) -> V1Job:
     if request.turn_server is not None:
         env_vars.append(V1EnvVar(name="SIP_TURN_ENABLED", value="true"))
 
+    # Volume mounts for model cache and recording directories
+    volumes: list[V1Volume] = []
+    volume_mounts: list[V1VolumeMount] = []
+
+    _dir_mappings: list[tuple[str | None, str, str, str]] = [
+        (config.piper_data_dir, "piper-data", _PIPER_MOUNT_PATH, "PIPER_DATA_DIR"),
+        (config.whisper_data_dir, "whisper-data", _WHISPER_MOUNT_PATH, "WHISPER_DATA_DIR"),
+        (config.recording_dir, "recording-data", _RECORDING_MOUNT_PATH, "RECORDING_DIR"),
+    ]
+
+    for host_path, vol_name, mount_path, env_name in _dir_mappings:
+        if host_path is not None:
+            volumes.append(
+                V1Volume(name=vol_name, host_path=V1HostPathVolumeSource(path=host_path, type="DirectoryOrCreate"))
+            )
+            volume_mounts.append(V1VolumeMount(name=vol_name, mount_path=mount_path))
+            env_vars.append(V1EnvVar(name=env_name, value=mount_path))
+
+    # CLI arg for recording directory
+    if config.recording_dir is not None:
+        args.extend(["--recording-dir", _RECORDING_MOUNT_PATH])
+
     job_name = _generate_job_name()
 
     container = V1Container(
         name="sip-caller",
         image=config.job_image,
+        image_pull_policy="Always",
         command=args,
         env=env_vars,
+        volume_mounts=volume_mounts or None,
     )
+
+    # Pod security context (optional, from operator config)
+    security_context: V1PodSecurityContext | None = None
+    if config.run_as_user is not None or config.run_as_group is not None or config.fs_group is not None:
+        security_context = V1PodSecurityContext(
+            run_as_user=config.run_as_user,
+            run_as_group=config.run_as_group,
+            fs_group=config.fs_group,
+        )
 
     pod_spec = V1PodSpec(
         containers=[container],
         restart_policy="Never",
         host_network=config.host_network,
+        volumes=volumes or None,
+        security_context=security_context,
     )
 
     template = V1PodTemplateSpec(

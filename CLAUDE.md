@@ -66,6 +66,12 @@ All optional with sensible defaults:
 - `JOB_BACKOFF_LIMIT` — Job retry limit (default: `0`)
 - `JOB_HOST_NETWORK` — Use host networking for SIP/RTP (default: `"true"`)
 - `PORT` — HTTP listen port (default: `8080`)
+- `PIPER_DATA_DIR` — Host path for Piper TTS model cache; creates a hostPath volume mount at `/data/piper` (default: `None`)
+- `WHISPER_DATA_DIR` — Host path for Whisper STT model cache; creates a hostPath volume mount at `/data/whisper` (default: `None`)
+- `RECORDING_DIR` — Host path for SIP call recordings; creates a hostPath volume mount at `/data/recordings` and passes `--recording-dir` to the call CLI (default: `None`)
+- `RUN_AS_USER` — UID to run the job container as (default: `None`)
+- `RUN_AS_GROUP` — GID to run the job container as (default: `None`)
+- `FS_GROUP` — fsGroup for the job pod security context, ensures volume ownership (default: `None`)
 
 ### Repo Scripts (`repo_scripts/`)
 

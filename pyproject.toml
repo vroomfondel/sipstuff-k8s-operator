@@ -57,6 +57,10 @@ path = "sipstuff_k8s_operator/__init__.py"
 profile = "black"
 line_length = 120
 
+[tool.black]
+line-length = 120
+target-version = ["py313"]
+
 [tool.pytest.ini_options]
 python_files = "tests/*.py"
 

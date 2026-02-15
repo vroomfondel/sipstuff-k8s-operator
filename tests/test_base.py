@@ -206,6 +206,12 @@ def test_job_builder_text() -> None:
         job_backoff_limit=1,
         host_network=True,
         port=8080,
+        piper_data_dir=None,
+        whisper_data_dir=None,
+        recording_dir=None,
+        run_as_user=None,
+        run_as_group=None,
+        fs_group=None,
     )
     req = CallRequest(dest="+4912345", text="Hello")
     job = build_job(req, cfg)
@@ -238,6 +244,12 @@ def test_job_builder_sip_override() -> None:
         job_backoff_limit=0,
         host_network=False,
         port=8080,
+        piper_data_dir=None,
+        whisper_data_dir=None,
+        recording_dir=None,
+        run_as_user=None,
+        run_as_group=None,
+        fs_group=None,
     )
     req = CallRequest(dest="+49123", text="test", sip_server="sip.example.com", sip_port=5061)
     job = build_job(req, cfg)
@@ -266,6 +278,12 @@ def test_job_builder_wav() -> None:
         job_backoff_limit=0,
         host_network=False,
         port=8080,
+        piper_data_dir=None,
+        whisper_data_dir=None,
+        recording_dir=None,
+        run_as_user=None,
+        run_as_group=None,
+        fs_group=None,
     )
     req = CallRequest(dest="+49123", wav="/audio/greeting.wav", verbose=True, repeat=3, pre_delay=2.0)
     job = build_job(req, cfg)
@@ -292,6 +310,12 @@ def test_job_builder_inter_delay() -> None:
         job_backoff_limit=0,
         host_network=False,
         port=8080,
+        piper_data_dir=None,
+        whisper_data_dir=None,
+        recording_dir=None,
+        run_as_user=None,
+        run_as_group=None,
+        fs_group=None,
     )
     req = CallRequest(dest="+49123", text="test", inter_delay=2.5)
     job = build_job(req, cfg)
@@ -319,6 +343,12 @@ def test_job_builder_tls_verify() -> None:
         job_backoff_limit=0,
         host_network=False,
         port=8080,
+        piper_data_dir=None,
+        whisper_data_dir=None,
+        recording_dir=None,
+        run_as_user=None,
+        run_as_group=None,
+        fs_group=None,
     )
     req = CallRequest(dest="+49123", text="test", sip_tls_verify=False)
     job = build_job(req, cfg)
@@ -346,6 +376,12 @@ def test_job_builder_nat_fields() -> None:
         job_backoff_limit=0,
         host_network=False,
         port=8080,
+        piper_data_dir=None,
+        whisper_data_dir=None,
+        recording_dir=None,
+        run_as_user=None,
+        run_as_group=None,
+        fs_group=None,
     )
     req = CallRequest(
         dest="+49123",

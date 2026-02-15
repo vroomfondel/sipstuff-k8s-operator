@@ -41,7 +41,7 @@ tests: venv
 
 lint: venv
 	@$(venv_activated)
-	black -l 120 .
+	black .
 
 isort: venv
 	@$(venv_activated)
