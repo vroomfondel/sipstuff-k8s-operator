@@ -19,7 +19,7 @@ REMOTE_ARM64_CONNECTION="${REMOTE_ARM64_CONNECTION:-}"  # e.g. "user@rock5b"; ma
 # Use a dedicated unencrypted key (generate with: ssh-keygen -t ed25519 -f ~/.ssh/id_podman -N "")
 REMOTE_ARM64_SSH_IDENTITY="${REMOTE_ARM64_SSH_IDENTITY:-}"
 readonly BUILDER_NAME=mbuilder
-readonly ENABLE_PARALLEL_BUILDS=0
+readonly ENABLE_PARALLEL_BUILDS=1
 readonly BUILDTIME="$(date +'%Y-%m-%d %H:%M:%S %Z')"
 
 readonly BUILD_BASE_ARGS=(
@@ -48,6 +48,17 @@ die() {
 
 log() {
   echo "==> $*"
+}
+
+format_duration() {
+  local seconds="$1"
+  local mins=$(( seconds / 60 ))
+  local secs=$(( seconds % 60 ))
+  if (( mins > 0 )); then
+    printf '%dm %ds' "${mins}" "${secs}"
+  else
+    printf '%ds' "${secs}"
+  fi
 }
 
 is_podman() {
@@ -211,6 +222,8 @@ build_with_podman() {
   local -a platform_tags=()
   local -A platform_connect_args=()
   local -a build_pids=()
+  local -A build_durations=()
+  local builds_start=$SECONDS
 
   # Ensure remote arm64 connection is set up and viable
   if [[ -n "${REMOTE_ARM64_CONNECTION}" ]]; then
@@ -252,8 +265,11 @@ build_with_podman() {
       ) &
       build_pids+=($!)
     else
+      local build_start=$SECONDS
       echo podman ${connect_arg} build "${build_args[@]}" --platform "${platform}" -t "${platform_tag}" "${DOCKER_BUILD_CONTEXT}"
       podman ${connect_arg} build "${build_args[@]}" --platform "${platform}" -t "${platform_tag}" "${DOCKER_BUILD_CONTEXT}" || exit 1
+      build_durations["${platform}"]=$(( SECONDS - build_start ))
+      log "Build ${platform} finished in $(format_duration ${build_durations["${platform}"]})"
     fi
   done
 
@@ -269,9 +285,12 @@ build_with_podman() {
       fi
     done
     (( failed == 1 )) && die "One or more builds failed"
+    log "All parallel builds finished in $(format_duration $(( SECONDS - builds_start )))"
   fi
 
   # Copy images built on remote to host
+  local copy_start=$SECONDS
+  local copy_happened=0
   for platform in "${!platform_connect_args[@]}"; do
     if [[ -n "${platform_connect_args[$platform]}" ]]; then
       local arch="${platform#*/}"
@@ -280,8 +299,10 @@ build_with_podman() {
       # Extract connection name from "--connection <name>"
       conn="${conn##*--connection }"
       copy_image_from_remote "${conn}" "${platform_tag}"
+      copy_happened=1
     fi
   done
+  local copy_duration=$(( SECONDS - copy_start ))
 
   # Create manifest from all platform images
   log "Creating manifest: ${DOCKER_IMAGE}"
@@ -294,16 +315,30 @@ build_with_podman() {
     podman tag "${DOCKER_IMAGE}" "${DOCKER_IMAGE_LATEST}"
   fi
 
+  # Push
+  local push_start=$SECONDS
   # log "To push, run:"
   # echo "  podman manifest push ${DOCKER_IMAGE} docker://${DOCKER_IMAGE}"
   echo podman manifest push "${DOCKER_IMAGE}" "docker://${DOCKER_IMAGE}"
-  echo SKIP PUSH podman manifest push "${DOCKER_IMAGE}" "docker://${DOCKER_IMAGE}"
+  podman manifest push "${DOCKER_IMAGE}" "docker://${DOCKER_IMAGE}"
 
   # Push latest tag
   if [[ "${DOCKER_IMAGE}" != *:latest ]]; then
     log "Pushing as latest: ${DOCKER_IMAGE_LATEST}"
-    echo SKIP PUSH podman manifest push "${DOCKER_IMAGE}" "docker://${DOCKER_IMAGE_LATEST}"
+    podman manifest push "${DOCKER_IMAGE}" "docker://${DOCKER_IMAGE_LATEST}"
   fi
+  local push_duration=$(( SECONDS - push_start ))
+
+  # Timing summary
+  log "--- Timing summary ---"
+  for platform in "${!build_durations[@]}"; do
+    log "  Build ${platform}: $(format_duration ${build_durations["${platform}"]})"
+  done
+  if (( copy_happened )); then
+    log "  Copy images: $(format_duration ${copy_duration})"
+  fi
+  log "  Push: $(format_duration ${push_duration})"
+  log "  Total: $(format_duration $(( SECONDS - builds_start )))"
 }
 
 build_local_only() {
@@ -342,6 +377,7 @@ build_local_only() {
 # MAIN
 #=============================================================================
 main() {
+  local main_start=$SECONDS
   setup_environment
 
   case "${1:-}" in
@@ -369,6 +405,8 @@ main() {
       fi
       ;;
   esac
+
+  log "Total time: $(format_duration $(( SECONDS - main_start )))"
 }
 
 # Run main and ensure cleanup
