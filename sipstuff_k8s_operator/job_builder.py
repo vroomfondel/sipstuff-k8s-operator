@@ -91,6 +91,9 @@ def build_job(request: CallRequest, config: OperatorConfig) -> V1Job:
     if request.stt_data_dir:
         args.extend(["--stt-data-dir", request.stt_data_dir])
 
+    if request.transcribe:
+        args.append("--transcribe")
+
     if request.verbose:
         args.append("--verbose")
 

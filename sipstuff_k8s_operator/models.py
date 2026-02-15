@@ -52,6 +52,7 @@ class CallRequest(BaseModel):
     # Recording — should point to a file below /data/recordings/ when the
     # RECORDING_DIR volume mount is configured, e.g. "/data/recordings/call.wav"
     record: str | None = None
+    transcribe: bool = False
 
     # Job options
     verbose: bool = False

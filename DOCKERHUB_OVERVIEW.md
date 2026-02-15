@@ -118,6 +118,7 @@ All settings are read from environment variables. Every variable is optional wit
 | `stt_language` | `string` | `null` | Language code for STT transcription (e.g. `"de"`) |
 | `stt_data_dir` | `string` | `null` | Directory for Whisper STT models |
 | `record` | `string` | `null` | Record remote party audio to this WAV file path (should be below `/data/recordings/` when `RECORDING_DIR` is configured) |
+| `transcribe` | `boolean` | `false` | Transcribe recorded audio via STT and write a JSON call report (requires `record`) |
 | `verbose` | `boolean` | `false` | Enable verbose logging in the call job |
 
 

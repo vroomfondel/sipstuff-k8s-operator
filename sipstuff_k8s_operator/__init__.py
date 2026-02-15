@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict
 
 from loguru import logger as glogger
 
-glogger.disable(__name__)
+# glogger.disable(__name__)
 
 
 def _loguru_skiplog_filter(record: dict) -> bool:  # type: ignore[type-arg]
