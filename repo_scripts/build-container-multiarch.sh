@@ -224,6 +224,8 @@ build_with_podman() {
   local -a build_pids=()
   local -A build_durations=()
   local builds_start=$SECONDS
+  local timing_dir
+  timing_dir="$(mktemp -d)"
 
   # Ensure remote arm64 connection is set up and viable
   if [[ -n "${REMOTE_ARM64_CONNECTION}" ]]; then
@@ -257,23 +259,30 @@ build_with_podman() {
       label="[${arch}/remote]"
     fi
 
-    log "Building for ${platform} -> ${platform_tag} (background)..."
+    log "Building for ${platform} -> ${platform_tag}..."
+    log "ENABLE_PARALLEL_BUILDS: ${ENABLE_PARALLEL_BUILDS}"
     # shellcheck disable=SC2086
     if (( ${ENABLE_PARALLEL_BUILDS:-0} == 1 )) ; then
+      log "PARALLEL_BUILDS ENABLED"
+
       echo "(podman ${connect_arg} build \"${build_args[@]}\" --platform \"${platform}\" -t \"${platform_tag}\" .) &"
       (
         set -o pipefail
+        build_start=$SECONDS
         podman ${connect_arg} build \
           "${build_args[@]}" \
           --platform "${platform}" \
           -t "${platform_tag}" \
-          "${DOCKER_BUILD_CONTEXT}" 2>&1 | sed "s/^/${label} /" || exit 1
+          "${DOCKER_BUILD_CONTEXT}" 2>&1 | sed "s|^|${label} |" || exit 1
+        echo $(( SECONDS - build_start )) > "${timing_dir}/${arch}"
       ) &
       build_pids+=($!)
     else
+      log "PARALLEL_BUILDS DISABLED"
+
       local build_start=$SECONDS
       echo podman ${connect_arg} build "${build_args[@]}" --platform "${platform}" -t "${platform_tag}" "${DOCKER_BUILD_CONTEXT}"
-      podman ${connect_arg} build "${build_args[@]}" --platform "${platform}" -t "${platform_tag}" "${DOCKER_BUILD_CONTEXT}" | sed "s/^/${label} /" || exit 1
+      podman ${connect_arg} build "${build_args[@]}" --platform "${platform}" -t "${platform_tag}" "${DOCKER_BUILD_CONTEXT}" | sed "s|^|${label} |" || exit 1
       build_durations["${platform}"]=$(( SECONDS - build_start ))
       log "Build ${platform} finished in $(format_duration ${build_durations["${platform}"]})"
     fi
@@ -292,7 +301,15 @@ build_with_podman() {
     done
     (( failed == 1 )) && die "One or more builds failed"
     log "All parallel builds finished in $(format_duration $(( SECONDS - builds_start )))"
+    # Collect per-platform durations from subshells
+    for f in "${timing_dir}"/*; do
+      [[ -f "${f}" ]] || continue
+      local plat_arch
+      plat_arch="$(basename "${f}")"
+      build_durations["linux/${plat_arch}"]="$(< "${f}")"
+    done
   fi
+  rm -rf "${timing_dir}"
 
   # Copy images built on remote to host
   local copy_start=$SECONDS
