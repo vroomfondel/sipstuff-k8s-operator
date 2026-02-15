@@ -27,6 +27,36 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            ## The following env vars configure how SIP call Jobs are generated.
+            ## They are read by the operator at runtime and applied to every
+            ## K8s Job it creates (volumes, security context, image, etc.).
+            # - name: JOB_IMAGE
+            #   value: "xomoxcc/somestuff:latest"
+            # - name: SIP_SECRET_NAME
+            #   value: "sip-credentials"
+            # - name: JOB_TTL_SECONDS
+            #   value: "3600"
+            # - name: JOB_BACKOFF_LIMIT
+            #   value: "0"
+            # - name: JOB_HOST_NETWORK
+            #   value: "true"
+            ## Host paths below are mounted as hostPath volumes into the call
+            ## Jobs at /data/piper, /data/whisper, /data/recordings.
+            # - name: PIPER_DATA_DIR
+            #   value: "/mnt/nfs/sipstuff_shared/piper_data"
+            # - name: WHISPER_DATA_DIR
+            #   value: "/mnt/nfs/sipstuff_shared/whisper_data"
+            # - name: RECORDING_DIR
+            #   value: "/mnt/nfs/sipstuff_shared/recordings"
+            ## Security context for call Jobs. When RUN_AS_USER is set and
+            ## volumes are configured, an initContainer (busybox) runs
+            ## chown -R <uid>:<gid> on the mounted directories.
+            # - name: RUN_AS_USER
+            #   value: "1200"
+            # - name: RUN_AS_GROUP
+            #   value: "1201"
+            # - name: FS_GROUP
+            #   value: "1201"
           livenessProbe:
             httpGet:
               path: /health
