@@ -4,9 +4,8 @@
 ![Cumulative Clones](https://img.shields.io/endpoint?logo=github&url=https://gist.githubusercontent.com/vroomfondel/69048d146ee747668673b2a8f8ebc81e/raw/sipstuff-k8s-operator_clone_count.json)
 [![Docker Pulls](https://img.shields.io/docker/pulls/xomoxcc/sipstuff-k8s-operator?logo=docker)](https://hub.docker.com/r/xomoxcc/sipstuff-k8s-operator/tags)
 [![PyPI](https://img.shields.io/pypi/v/sipstuff-k8s-operator?logo=pypi&logoColor=white)](https://pypi.org/project/sipstuff-k8s-operator/)
-[![Gemini_Generated_Image_23m8jo23m8jo23m8_250x250.png](https://raw.githubusercontent.com/vroomfondel/sipstuff-k8s-operator/main/Gemini_Generated_Image_23m8jo23m8jo23m8_250x250.png)](https://github.com/vroomfondel/sipstuff-k8s-operator)
 
-# WIP !!!
+[![Gemini_Generated_Image_23m8jo23m8jo23m8_250x250.png](https://raw.githubusercontent.com/vroomfondel/sipstuff-k8s-operator/main/Gemini_Generated_Image_23m8jo23m8jo23m8_250x250.png)](https://github.com/vroomfondel/sipstuff-k8s-operator)
 
 # sipstuff-k8s-operator
 
@@ -26,6 +25,12 @@ Quick links:
 - **NAT traversal** — STUN, ICE, TURN relay, UDP keepalive, and static public address support for complex network environments.
 - **Multi‑arch** — runs on amd64 and arm64 (laptops, servers, SBCs).
 
+
+## Screenshots
+
+![Operator running a SIP call with transcription](https://raw.githubusercontent.com/vroomfondel/sipstuff-k8s-operator/main/Bildschirmfoto_2026-02-15_15-48-00_blurred.png)
+
+![Operator startup and call execution](https://raw.githubusercontent.com/vroomfondel/sipstuff-k8s-operator/main/Bildschirmfoto_2026-02-15_15-48-20_blurred.png)
 
 ## API Endpoints
 
@@ -112,6 +117,7 @@ All settings are read from environment variables. Every variable is optional wit
 | `pre_delay` | `float` | `0.0` | Delay before call in seconds (0-30) |
 | `inter_delay` | `float` | `0.0` | Delay between WAV repeats in seconds (0-30) |
 | `post_delay` | `float` | `0.0` | Delay after call in seconds (0-30) |
+| `wait_for_silence` | `float` | `null` | Wait for N seconds of remote silence before playback (0-30) |
 | `repeat` | `integer` | `1` | Number of call repetitions (1-100) |
 | `tts_model` | `string` | `null` | TTS model name |
 | `tts_sample_rate` | `integer` | `null` | TTS sample rate in Hz (0-48000) |

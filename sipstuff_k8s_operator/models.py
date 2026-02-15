@@ -36,6 +36,7 @@ class CallRequest(BaseModel):
     timeout: int = Field(60, ge=1, le=600)
     pre_delay: float = Field(0.0, ge=0.0, le=30.0)
     post_delay: float = Field(0.0, ge=0.0, le=30.0)
+    wait_for_silence: float | None = Field(None, ge=0.0, le=30.0)
     inter_delay: float = Field(0.0, ge=0.0, le=30.0)
     repeat: int = Field(1, ge=1, le=100)
 

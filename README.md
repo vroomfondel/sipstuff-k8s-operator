@@ -7,11 +7,15 @@
 
 [![Gemini_Generated_Image_23m8jo23m8jo23m8_250x250.png](https://raw.githubusercontent.com/vroomfondel/sipstuff-k8s-operator/main/Gemini_Generated_Image_23m8jo23m8jo23m8_250x250.png)](https://hub.docker.com/r/xomoxcc/sipstuff-k8s-operator/tags)
 
-# WIP !!!!!
-
 # sipstuff-k8s-operator
 
 A Kubernetes operator that exposes a FastAPI HTTP API for creating SIP call Jobs. It accepts call requests via `POST /call`, builds Kubernetes Jobs that run `sipstuff.cli call`, and tracks job status.
+
+## Screenshots
+
+![Operator running a SIP call with transcription](https://raw.githubusercontent.com/vroomfondel/sipstuff-k8s-operator/main/Bildschirmfoto_2026-02-15_15-48-00_blurred.png)
+
+![Operator startup and call execution](https://raw.githubusercontent.com/vroomfondel/sipstuff-k8s-operator/main/Bildschirmfoto_2026-02-15_15-48-20_blurred.png)
 
 ## API Endpoints
 
@@ -130,6 +134,7 @@ The operator Deployment uses liveness and readiness probes against `/health`, ru
 | `pre_delay` | `float` | `0.0` | Delay before call in seconds (0-30) |
 | `inter_delay` | `float` | `0.0` | Delay between WAV repeats in seconds (0-30) |
 | `post_delay` | `float` | `0.0` | Delay after call in seconds (0-30) |
+| `wait_for_silence` | `float` | `null` | Wait for N seconds of remote silence before playback (0-30) |
 | `repeat` | `integer` | `1` | Number of call repetitions (1-100) |
 | `tts_model` | `string` | `null` | TTS model name |
 | `tts_sample_rate` | `integer` | `null` | TTS sample rate in Hz (0-48000) |

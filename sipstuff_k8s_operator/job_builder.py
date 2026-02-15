@@ -75,6 +75,8 @@ def build_job(request: CallRequest, config: OperatorConfig) -> V1Job:
         args.extend(["--inter-delay", str(request.inter_delay)])
     if request.post_delay > 0:
         args.extend(["--post-delay", str(request.post_delay)])
+    if request.wait_for_silence is not None:
+        args.extend(["--wait-for-silence", str(request.wait_for_silence)])
     if request.repeat > 1:
         args.extend(["--repeat", str(request.repeat)])
 
