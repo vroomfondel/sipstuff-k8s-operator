@@ -252,22 +252,28 @@ build_with_podman() {
     platform_tags+=("${platform_tag}")
     platform_connect_args["${platform}"]="${connect_arg}"
 
+    local label="[${arch}]"
+    if [[ -n "${connect_arg}" ]]; then
+      label="[${arch}/remote]"
+    fi
+
     log "Building for ${platform} -> ${platform_tag} (background)..."
     # shellcheck disable=SC2086
     if (( ${ENABLE_PARALLEL_BUILDS:-0} == 1 )) ; then
       echo "(podman ${connect_arg} build \"${build_args[@]}\" --platform \"${platform}\" -t \"${platform_tag}\" .) &"
       (
+        set -o pipefail
         podman ${connect_arg} build \
           "${build_args[@]}" \
           --platform "${platform}" \
           -t "${platform_tag}" \
-          "${DOCKER_BUILD_CONTEXT}" || exit 1
+          "${DOCKER_BUILD_CONTEXT}" 2>&1 | sed "s/^/${label} /" || exit 1
       ) &
       build_pids+=($!)
     else
       local build_start=$SECONDS
       echo podman ${connect_arg} build "${build_args[@]}" --platform "${platform}" -t "${platform_tag}" "${DOCKER_BUILD_CONTEXT}"
-      podman ${connect_arg} build "${build_args[@]}" --platform "${platform}" -t "${platform_tag}" "${DOCKER_BUILD_CONTEXT}" || exit 1
+      podman ${connect_arg} build "${build_args[@]}" --platform "${platform}" -t "${platform_tag}" "${DOCKER_BUILD_CONTEXT}" | sed "s/^/${label} /" || exit 1
       build_durations["${platform}"]=$(( SECONDS - build_start ))
       log "Build ${platform} finished in $(format_duration ${build_durations["${platform}"]})"
     fi
