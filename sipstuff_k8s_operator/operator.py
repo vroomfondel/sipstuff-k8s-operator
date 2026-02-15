@@ -1,12 +1,11 @@
 """FastAPI application factory for the SIP call job operator."""
 
-from __future__ import annotations
-
 from fastapi import FastAPI
 from kubernetes import client as k8s_client
 from kubernetes import config as k8s_config
 from loguru import logger as glogger
 
+from sipstuff_k8s_operator import __version__
 from sipstuff_k8s_operator.api import router
 from sipstuff_k8s_operator.config import OperatorConfig
 
@@ -27,7 +26,7 @@ def create_app(config: OperatorConfig) -> FastAPI:
     """Build and return the FastAPI application."""
     _init_k8s()
 
-    app = FastAPI(title="sipstuff-k8s-operator", version="1.0.0")
+    app = FastAPI(title="sipstuff-k8s-operator", version=__version__)
     app.state.config = config
     app.state.batch_api = k8s_client.BatchV1Api()
 

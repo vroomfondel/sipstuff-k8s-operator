@@ -1,7 +1,5 @@
 """Build Kubernetes Job specs for SIP calls."""
 
-from __future__ import annotations
-
 import random
 import string
 from datetime import datetime, timezone

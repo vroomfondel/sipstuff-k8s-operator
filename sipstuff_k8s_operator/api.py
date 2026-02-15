@@ -1,7 +1,5 @@
 """FastAPI router with SIP call job endpoints."""
 
-from __future__ import annotations
-
 import json
 from typing import TYPE_CHECKING
 

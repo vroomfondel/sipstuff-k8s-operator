@@ -1,7 +1,5 @@
 """Tests for sipstuff_k8s_operator."""
 
-from __future__ import annotations
-
 import os
 from unittest.mock import patch
 
