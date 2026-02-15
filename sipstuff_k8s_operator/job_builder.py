@@ -16,6 +16,7 @@ from kubernetes.client import (
     V1PodSpec,
     V1PodTemplateSpec,
     V1SecretKeySelector,
+    V1SecurityContext,
     V1Volume,
     V1VolumeMount,
 )
@@ -191,8 +192,28 @@ def build_job(request: CallRequest, config: OperatorConfig) -> V1Job:
             fs_group=config.fs_group,
         )
 
+    # initContainer to fix hostPath ownership (fsGroup does not apply to hostPath volumes)
+    init_containers: list[V1Container] | None = None
+    if volume_mounts and config.run_as_user is not None:
+        owner = str(config.run_as_user)
+        if config.fs_group is not None:
+            owner += f":{config.fs_group}"
+        elif config.run_as_group is not None:
+            owner += f":{config.run_as_group}"
+        dirs = " ".join(vm.mount_path for vm in volume_mounts)
+        init_containers = [
+            V1Container(
+                name="fix-permissions",
+                image="busybox:latest",
+                command=["sh", "-c", f"chown -R {owner} {dirs}"],
+                volume_mounts=list(volume_mounts),
+                security_context=V1SecurityContext(run_as_user=0),
+            )
+        ]
+
     pod_spec = V1PodSpec(
         containers=[container],
+        init_containers=init_containers,
         restart_policy="Never",
         host_network=config.host_network,
         volumes=volumes or None,

@@ -81,6 +81,12 @@ All settings are read from environment variables. Every variable is optional wit
 | `RUN_AS_GROUP` | `null` | GID to run the job container as |
 | `FS_GROUP` | `null` | fsGroup for the job pod security context |
 
+**Note on hostPath volumes and permissions:** `fsGroup` only takes effect on volume types that support ownership management (e.g. `emptyDir`, PVCs). For `hostPath` volumes the host directory permissions are used as-is. Make sure the directories on the host are writable by the configured `RUN_AS_USER`/`RUN_AS_GROUP`:
+
+```bash
+chown -R 1200:1201 /mnt/nfs/sipstuff_shared/{piper_data,whisper_data,recordings}
+```
+
 
 ## Call Request Body
 
