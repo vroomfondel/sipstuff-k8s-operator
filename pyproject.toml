@@ -82,7 +82,6 @@ exclude = '''(?x)(
     \.venv
     | venv
     | \.pyi$
-    | repo_scripts/
     )'''
 
 [[tool.mypy.overrides]]
