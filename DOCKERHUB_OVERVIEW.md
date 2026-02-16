@@ -32,6 +32,8 @@ Quick links:
 
 ![Operator startup and call execution](https://raw.githubusercontent.com/vroomfondel/sipstuff-k8s-operator/main/Bildschirmfoto_2026-02-15_15-48-20_blurred.png)
 
+![Operator startup with configuration overview](https://raw.githubusercontent.com/vroomfondel/sipstuff-k8s-operator/main/Bildschirmfoto_2026-02-16_19-26-07_blurred.png)
+
 ## API Endpoints
 
 | Method | Path | Description |
