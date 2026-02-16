@@ -95,4 +95,4 @@ ignore_missing_imports = true
 
 
 [project.scripts]
-sipstuff-operator = "sipstuff_k8s_operator.__main__:main"
+sipstuff-k8s-operator = "sipstuff_k8s_operator.__main__:main"

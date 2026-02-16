@@ -60,4 +60,4 @@ ARG buildtime=buildtime_is_undefined
 ENV BUILDTIME=$buildtime
 
 ENTRYPOINT ["tini", "--"]
-CMD ["sipstuff_k8s_operator"]
+CMD ["sipstuff-k8s-operator"]
