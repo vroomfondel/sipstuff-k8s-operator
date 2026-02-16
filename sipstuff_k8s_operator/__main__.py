@@ -227,7 +227,7 @@ def _build_job_from_args(
     parsed = parser.parse_args(args)
 
     # Build merged dict: validate --data through Pydantic, then overlay CLI flags
-    merged: dict[str, str | bool] = {}
+    merged: dict[str, str | bool | dict[str, str]] = {}
     if parsed.data is not None:
         try:
             base = CallRequest.model_validate_json(parsed.data)
@@ -239,6 +239,12 @@ def _build_job_from_args(
         cli_val: str | bool | None = getattr(parsed, name, None)
         if cli_val is not None:
             merged[name] = cli_val
+
+    # Convert --node-selector string to dict (e.g. "key=val,k2=v2" → dict)
+    if "node_selector" in merged and isinstance(merged["node_selector"], str):
+        from sipstuff_k8s_operator.config import parse_node_selector
+
+        merged["node_selector"] = parse_node_selector(str(merged["node_selector"]))
 
     # Fall back to minimal defaults if nothing provided
     if "dest" not in merged:

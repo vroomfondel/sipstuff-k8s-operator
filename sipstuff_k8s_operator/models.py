@@ -57,6 +57,7 @@ class CallRequest(BaseModel):
 
     # Job options
     verbose: bool = False
+    node_selector: dict[str, str] | None = None
 
     @model_validator(mode="after")
     def _check_text_or_wav(self) -> "CallRequest":

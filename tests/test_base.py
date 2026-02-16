@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 import sipstuff_k8s_operator
-from sipstuff_k8s_operator.config import OperatorConfig
+from sipstuff_k8s_operator.config import OperatorConfig, parse_node_selector
 from sipstuff_k8s_operator.models import CallRequest, CallResponse, HealthResponse, JobInfo
 
 # ---------------------------------------------------------------------------
@@ -46,6 +46,25 @@ def test_config_defaults() -> None:
     assert cfg.job_backoff_limit == 0
     assert cfg.host_network is True
     assert cfg.port == 8080
+    assert cfg.node_selector is None
+
+
+def test_parse_node_selector() -> None:
+    """parse_node_selector handles various inputs."""
+    assert parse_node_selector("k=v") == {"k": "v"}
+    assert parse_node_selector("a=1,b=2") == {"a": "1", "b": "2"}
+    assert parse_node_selector("  k = v , k2 = v2  ") == {"k": "v", "k2": "v2"}
+    assert parse_node_selector("") == {}
+    assert parse_node_selector("   ") == {}
+    with pytest.raises(ValueError, match="missing '='"):
+        parse_node_selector("noequals")
+
+
+def test_config_node_selector_from_env() -> None:
+    """Config parses NODE_SELECTOR env var."""
+    with patch.dict(os.environ, {"NODE_SELECTOR": "mayplacecalls=true,zone=eu-west"}, clear=True):
+        cfg = OperatorConfig.from_env()
+    assert cfg.node_selector == {"mayplacecalls": "true", "zone": "eu-west"}
 
 
 def test_config_from_env() -> None:
@@ -212,6 +231,7 @@ def test_job_builder_text() -> None:
         run_as_user=None,
         run_as_group=None,
         fs_group=None,
+        node_selector=None,
     )
     req = CallRequest(dest="+4912345", text="Hello")
     job = build_job(req, cfg)
@@ -250,6 +270,7 @@ def test_job_builder_sip_override() -> None:
         run_as_user=None,
         run_as_group=None,
         fs_group=None,
+        node_selector=None,
     )
     req = CallRequest(dest="+49123", text="test", sip_server="sip.example.com", sip_port=5061)
     job = build_job(req, cfg)
@@ -284,6 +305,7 @@ def test_job_builder_wav() -> None:
         run_as_user=None,
         run_as_group=None,
         fs_group=None,
+        node_selector=None,
     )
     req = CallRequest(dest="+49123", wav="/audio/greeting.wav", verbose=True, repeat=3, pre_delay=2.0)
     job = build_job(req, cfg)
@@ -316,6 +338,7 @@ def test_job_builder_inter_delay() -> None:
         run_as_user=None,
         run_as_group=None,
         fs_group=None,
+        node_selector=None,
     )
     req = CallRequest(dest="+49123", text="test", inter_delay=2.5)
     job = build_job(req, cfg)
@@ -349,6 +372,7 @@ def test_job_builder_tls_verify() -> None:
         run_as_user=None,
         run_as_group=None,
         fs_group=None,
+        node_selector=None,
     )
     req = CallRequest(dest="+49123", text="test", sip_tls_verify=False)
     job = build_job(req, cfg)
@@ -382,6 +406,7 @@ def test_job_builder_nat_fields() -> None:
         run_as_user=None,
         run_as_group=None,
         fs_group=None,
+        node_selector=None,
     )
     req = CallRequest(
         dest="+49123",
@@ -417,3 +442,107 @@ def test_job_builder_nat_fields() -> None:
     assert env_dict_none["SIP_STUN_SERVERS"].value_from.secret_key_ref.name == "secret"
     # SIP_TURN_ENABLED should NOT be present when turn_server is not provided
     assert "SIP_TURN_ENABLED" not in env_dict_none
+
+
+def test_job_builder_no_node_selector() -> None:
+    """Job without node_selector (neither config nor request) has None in pod spec."""
+    from sipstuff_k8s_operator.job_builder import build_job
+
+    cfg = OperatorConfig(
+        namespace="ns",
+        job_image="img:latest",
+        sip_secret_name="secret",
+        job_ttl_seconds=3600,
+        job_backoff_limit=0,
+        host_network=False,
+        port=8080,
+        piper_data_dir=None,
+        whisper_data_dir=None,
+        recording_dir=None,
+        run_as_user=None,
+        run_as_group=None,
+        fs_group=None,
+        node_selector=None,
+    )
+    req = CallRequest(dest="+49123", text="test")
+    job = build_job(req, cfg)
+
+    assert job.spec.template.spec.node_selector is None
+
+
+def test_job_builder_request_node_selector_overrides() -> None:
+    """Request node_selector overrides config default."""
+    from sipstuff_k8s_operator.job_builder import build_job
+
+    cfg = OperatorConfig(
+        namespace="ns",
+        job_image="img:latest",
+        sip_secret_name="secret",
+        job_ttl_seconds=3600,
+        job_backoff_limit=0,
+        host_network=False,
+        port=8080,
+        piper_data_dir=None,
+        whisper_data_dir=None,
+        recording_dir=None,
+        run_as_user=None,
+        run_as_group=None,
+        fs_group=None,
+        node_selector={"default-key": "default-val"},
+    )
+    req = CallRequest(dest="+49123", text="test", node_selector={"mayplacecalls": "true"})
+    job = build_job(req, cfg)
+
+    assert job.spec.template.spec.node_selector == {"mayplacecalls": "true"}
+
+
+def test_job_builder_config_node_selector_default() -> None:
+    """Config node_selector is used when request does not set one."""
+    from sipstuff_k8s_operator.job_builder import build_job
+
+    cfg = OperatorConfig(
+        namespace="ns",
+        job_image="img:latest",
+        sip_secret_name="secret",
+        job_ttl_seconds=3600,
+        job_backoff_limit=0,
+        host_network=False,
+        port=8080,
+        piper_data_dir=None,
+        whisper_data_dir=None,
+        recording_dir=None,
+        run_as_user=None,
+        run_as_group=None,
+        fs_group=None,
+        node_selector={"mayplacecalls": "true"},
+    )
+    req = CallRequest(dest="+49123", text="test")
+    job = build_job(req, cfg)
+
+    assert job.spec.template.spec.node_selector == {"mayplacecalls": "true"}
+
+
+def test_job_builder_request_nulls_config_node_selector() -> None:
+    """Request with empty dict node_selector explicitly clears config default."""
+    from sipstuff_k8s_operator.job_builder import build_job
+
+    cfg = OperatorConfig(
+        namespace="ns",
+        job_image="img:latest",
+        sip_secret_name="secret",
+        job_ttl_seconds=3600,
+        job_backoff_limit=0,
+        host_network=False,
+        port=8080,
+        piper_data_dir=None,
+        whisper_data_dir=None,
+        recording_dir=None,
+        run_as_user=None,
+        run_as_group=None,
+        fs_group=None,
+        node_selector={"mayplacecalls": "true"},
+    )
+    req = CallRequest(dest="+49123", text="test", node_selector={})
+    job = build_job(req, cfg)
+
+    assert job.spec.template.spec.node_selector is None

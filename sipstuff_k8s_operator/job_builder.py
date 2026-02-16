@@ -220,6 +220,7 @@ def build_job(request: CallRequest, config: OperatorConfig) -> V1Job:
         host_network=config.host_network,
         volumes=volumes or None,
         security_context=security_context,
+        node_selector=(request.node_selector if request.node_selector is not None else config.node_selector) or None,
     )
 
     template = V1PodTemplateSpec(

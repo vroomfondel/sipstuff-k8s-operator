@@ -72,6 +72,7 @@ All optional with sensible defaults:
 - `RUN_AS_USER` — UID to run the job container as (default: `None`)
 - `RUN_AS_GROUP` — GID to run the job container as (default: `None`)
 - `FS_GROUP` — fsGroup for the job pod security context, ensures volume ownership (default: `None`)
+- `NODE_SELECTOR` — Default node selector for job pods, format `key=value,key2=value2` (default: `None`). Can be overridden or cleared (`{}`) per request.
 
 ### Repo Scripts (`repo_scripts/`)
 

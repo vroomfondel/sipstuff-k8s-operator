@@ -16,7 +16,7 @@ repos:
         # pre-commit's default_language_version, see
         # https://pre-commit.com/#top_level-default_language_version
         language_version: python3.14
-        args: [--diff, --check, "-l 120"]
+        args: [--diff, --check]
 
   - repo: local
     hooks:

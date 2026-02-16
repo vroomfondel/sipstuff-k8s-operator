@@ -78,6 +78,7 @@ All settings are read from environment variables. Every variable is optional wit
 | `RUN_AS_USER` | `null` | UID to run the job container as |
 | `RUN_AS_GROUP` | `null` | GID to run the job container as |
 | `FS_GROUP` | `null` | fsGroup for the job pod security context |
+| `NODE_SELECTOR` | `null` | Default node selector for job pods (`key=value,key2=value2`); can be overridden or cleared per request |
 
 **Note on hostPath volumes and permissions:** `fsGroup` only takes effect on volume types that support ownership management (e.g. `emptyDir`, PVCs). For `hostPath` volumes the host directory permissions are used as-is. When `RUN_AS_USER` is set and volume mounts are configured, the operator automatically adds a `fix-permissions` initContainer (runs as root with `busybox:latest`) that executes `chown -R <uid>:<gid>` on all mounted directories before the main container starts. This ensures the SIP call container can write to the hostPath volumes regardless of the host-side permissions.
 
@@ -145,6 +146,7 @@ The operator Deployment uses liveness and readiness probes against `/health`, ru
 | `record` | `string` | `null` | Record remote party audio to this WAV file path (should be below `/data/recordings/` when `RECORDING_DIR` is configured) |
 | `transcribe` | `boolean` | `false` | Transcribe recorded audio via STT and write a JSON call report (requires `record`) |
 | `verbose` | `boolean` | `false` | Enable verbose logging in the call job |
+| `node_selector` | `object` | `null` | K8s node selector for the job pod (e.g. `{"mayplacecalls": "true"}`). Overrides the operator default from `NODE_SELECTOR`. Set to `{}` to explicitly clear the default. |
 
 ## SIP Credentials
 

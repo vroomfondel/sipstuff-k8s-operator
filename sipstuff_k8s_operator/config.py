@@ -9,6 +9,24 @@ def _parse_bool(value: str) -> bool:
     return value.strip().lower() in ("true", "1", "yes")
 
 
+def parse_node_selector(value: str) -> dict[str, str]:
+    """Parse a ``key=value,key2=value2`` string into a dict.
+
+    Returns an empty dict for blank input.
+    """
+    value = value.strip()
+    if not value:
+        return {}
+    result: dict[str, str] = {}
+    for pair in value.split(","):
+        pair = pair.strip()
+        if "=" not in pair:
+            raise ValueError(f"Invalid node selector entry (missing '='): {pair!r}")
+        k, v = pair.split("=", 1)
+        result[k.strip()] = v.strip()
+    return result
+
+
 @dataclass(frozen=True)
 class OperatorConfig:
     """Immutable configuration for the SIP call job operator.
@@ -29,6 +47,7 @@ class OperatorConfig:
     run_as_user: int | None
     run_as_group: int | None
     fs_group: int | None
+    node_selector: dict[str, str] | None
 
     @classmethod
     def from_env(cls) -> OperatorConfig:
@@ -86,4 +105,5 @@ class OperatorConfig:
             run_as_user=int(v) if (v := os.environ.get("RUN_AS_USER")) else None,
             run_as_group=int(v) if (v := os.environ.get("RUN_AS_GROUP")) else None,
             fs_group=int(v) if (v := os.environ.get("FS_GROUP")) else None,
+            node_selector=parse_node_selector(v) if (v := os.environ.get("NODE_SELECTOR")) else None,
         )
