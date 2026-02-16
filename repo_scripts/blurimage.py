@@ -147,7 +147,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import pytesseract  # type: ignore[import-untyped]
+import pytesseract
 from pytesseract import Output
 
 

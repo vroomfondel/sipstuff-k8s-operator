@@ -82,10 +82,15 @@ exclude = '''(?x)(
     \.venv
     | venv
     | \.pyi$
+    | repo_scripts/
     )'''
 
 [[tool.mypy.overrides]]
 module = "kubernetes.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["cv2", "numpy", "pytesseract"]
 ignore_missing_imports = true
 
 
