@@ -60,7 +60,7 @@ class OperatorConfig:
             (default: value from ``/var/run/secrets/kubernetes.io/serviceaccount/namespace``
             or ``"sipstuff"``).
         JOB_IMAGE : str, optional
-            Container image for SIP call jobs (default ``"xomoxcc/somestuff:latest"``).
+            Container image for SIP call jobs (default ``"xomoxcc/sipstuff:latest"``).
         SIP_SECRET_NAME : str, optional
             Name of the K8s Secret containing default SIP credentials
             (default ``"sip-credentials"``).
@@ -93,7 +93,7 @@ class OperatorConfig:
 
         return cls(
             namespace=os.environ.get("JOB_NAMESPACE", default_namespace).strip(),
-            job_image=os.environ.get("JOB_IMAGE", "xomoxcc/somestuff:latest").strip(),
+            job_image=os.environ.get("JOB_IMAGE", "xomoxcc/sipstuff:latest").strip(),
             sip_secret_name=os.environ.get("SIP_SECRET_NAME", "sip-credentials").strip(),
             job_ttl_seconds=int(os.environ.get("JOB_TTL_SECONDS", "3600")),
             job_backoff_limit=int(os.environ.get("JOB_BACKOFF_LIMIT", "0")),

@@ -9,7 +9,7 @@
 
 # sipstuff-k8s-operator
 
-A Kubernetes operator that exposes a FastAPI HTTP API for creating SIP call Jobs. It accepts call requests via `POST /call`, builds Kubernetes Jobs that run [`sipstuff.cli call`](https://hub.docker.com/r/xomoxcc/somestuff/tags), and tracks job status. Available for **linux/amd64** and **linux/arm64**. [Source on GitHub](https://github.com/vroomfondel/sipstuff-k8s-operator).
+A Kubernetes operator that exposes a FastAPI HTTP API for creating SIP call Jobs. It accepts call requests via `POST /call`, builds Kubernetes Jobs that run [`sipstuff.cli call`](https://hub.docker.com/r/xomoxcc/sipstuff/tags), and tracks job status. Available for **linux/amd64** and **linux/arm64**. [Source on GitHub](https://github.com/vroomfondel/sipstuff-k8s-operator).
 
 Quick links:
 - Source: [github.com/vroomfondel/sipstuff-k8s-operator](https://github.com/vroomfondel/sipstuff-k8s-operator)
@@ -75,7 +75,7 @@ All settings are read from environment variables. Every variable is optional wit
 | Variable | Default | Description |
 |---|---|---|
 | `JOB_NAMESPACE` | Downward API namespace or `"sipstuff"` | K8s namespace for created jobs |
-| `JOB_IMAGE` | `"xomoxcc/somestuff:latest"` | Container image for SIP call jobs |
+| `JOB_IMAGE` | `"xomoxcc/sipstuff:latest"` | Container image for SIP call jobs |
 | `SIP_SECRET_NAME` | `"sip-credentials"` | K8s Secret name for default SIP credentials |
 | `JOB_TTL_SECONDS` | `3600` | TTL in seconds after job completion before cleanup |
 | `JOB_BACKOFF_LIMIT` | `0` | Number of retries before marking a job as failed |

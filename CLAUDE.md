@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**sipstuff-k8s-operator** (`sipstuff_k8s_operator`) is a Kubernetes operator that exposes a FastAPI HTTP API for creating SIP call Jobs. It accepts call requests via `POST /call`, builds Kubernetes Job specs that run `xomoxcc/somestuff` with the `sipstuff.cli call` entrypoint, and tracks job status.
+**sipstuff-k8s-operator** (`sipstuff_k8s_operator`) is a Kubernetes operator that exposes a FastAPI HTTP API for creating SIP call Jobs. It accepts call requests via `POST /call`, builds Kubernetes Job specs that run `xomoxcc/sipstuff` with the `sipstuff.cli call` entrypoint, and tracks job status.
 
 API endpoints: `POST /call`, `GET /jobs`, `GET /jobs/{name}`, `GET /health`.
 
@@ -60,7 +60,7 @@ Namespace, RBAC (ServiceAccount + Role + RoleBinding), Secret example, Deploymen
 
 All optional with sensible defaults:
 - `JOB_NAMESPACE` — K8s namespace for jobs (default: from downward API or `"sipstuff"`)
-- `JOB_IMAGE` — Container image for call jobs (default: `"xomoxcc/somestuff:latest"`)
+- `JOB_IMAGE` — Container image for call jobs (default: `"xomoxcc/sipstuff:latest"`)
 - `SIP_SECRET_NAME` — K8s Secret name for SIP credentials (default: `"sip-credentials"`)
 - `JOB_TTL_SECONDS` — Job cleanup TTL (default: `3600`)
 - `JOB_BACKOFF_LIMIT` — Job retry limit (default: `0`)

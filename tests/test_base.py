@@ -40,7 +40,7 @@ def test_config_defaults() -> None:
     with patch.dict(os.environ, {}, clear=True):
         cfg = OperatorConfig.from_env()
     assert cfg.namespace == "sipstuff"
-    assert cfg.job_image == "xomoxcc/somestuff:latest"
+    assert cfg.job_image == "xomoxcc/sipstuff:latest"
     assert cfg.sip_secret_name == "sip-credentials"
     assert cfg.job_ttl_seconds == 3600
     assert cfg.job_backoff_limit == 0

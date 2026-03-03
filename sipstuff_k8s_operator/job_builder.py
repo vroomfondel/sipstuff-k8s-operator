@@ -81,7 +81,7 @@ def build_job(request: CallRequest, config: OperatorConfig) -> V1Job:
         args.extend(["--repeat", str(request.repeat)])
 
     if request.tts_model:
-        args.extend(["--tts-model", request.tts_model])
+        args.extend(["--piper-model", request.tts_model])
     if request.tts_sample_rate is not None:
         args.extend(["--tts-sample-rate", str(request.tts_sample_rate)])
     if request.tts_data_dir:

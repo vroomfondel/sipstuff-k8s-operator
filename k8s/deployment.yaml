@@ -31,7 +31,7 @@ spec:
             ## They are read by the operator at runtime and applied to every
             ## K8s Job it creates (volumes, security context, image, etc.).
             # - name: JOB_IMAGE
-            #   value: "xomoxcc/somestuff:latest"
+            #   value: "xomoxcc/sipstuff:latest"
             # - name: SIP_SECRET_NAME
             #   value: "sip-credentials"
             # - name: JOB_TTL_SECONDS
